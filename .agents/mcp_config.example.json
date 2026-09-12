@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "plane": {
+      "command": "uvx",
+      "args": [
+        "plane-mcp-server",
+        "stdio"
+      ],
+      "env": {
+        "PLANE_API_KEY": "<tu-api-key>",
+        "PLANE_WORKSPACE_SLUG": "<tu-workspace>",
+        "PLANE_BASE_URL": "https://api.plane.so"
+      }
+    },
+    "n8n": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "n8n-mcp"
+      ],
+      "env": {
+        "N8N_API_URL": "<tu-instancia-n8n>",
+        "N8N_API_KEY": "<tu-api-key>"
+      }
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp"
+      ]
+    }
+  }
+}

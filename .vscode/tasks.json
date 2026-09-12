@@ -1,0 +1,61 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "agyFlow: Pipeline (Estado actual y diagnósticos)",
+      "type": "shell",
+      "command": "python3 scripts/pipeline.py status",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "agyFlow: Pipeline (Validar Gherkin en PRD.md)",
+      "type": "shell",
+      "command": "python3 scripts/pipeline.py check-prd",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "agyFlow: Validar Squad (Integridad y consistencia)",
+      "type": "shell",
+      "command": "python3 scripts/validate_squad.py",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "agyFlow: Ejecutar Suite Completa de Tests",
+      "type": "shell",
+      "command": "python3 -m unittest discover -s tests -v",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "agyFlow: Generar Plantilla de Entrega (Handoff)",
+      "type": "shell",
+      "command": "python3 scripts/handoff.py template",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

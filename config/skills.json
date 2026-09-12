@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "agents": {
+    "po-agent": {
+      "core": "agy-requirements",
+      "optional": []
+    },
+    "scrum-master-agent": {
+      "core": "agy-planning",
+      "optional": []
+    },
+    "designer-agent": {
+      "core": "agy-design-handoff",
+      "optional": [
+        "impeccable",
+        "figma-workflows",
+        "pencil-workflows"
+      ]
+    },
+    "frontend-dev-agent": {
+      "core": "agy-frontend-delivery",
+      "optional": [
+        "astro-guidance",
+        "vercel-react-best-practices",
+        "next-workflows",
+        "webapp-testing"
+      ]
+    },
+    "backend-dev-agent": {
+      "core": "agy-backend-contracts",
+      "optional": [
+        "nestjs-best-practices",
+        "supabase",
+        "supabase-postgres-best-practices"
+      ]
+    },
+    "qa-agent": {
+      "core": "agy-qa-evidence",
+      "optional": [
+        "webapp-testing"
+      ]
+    },
+    "devops-agent": {
+      "core": "agy-build-release",
+      "optional": []
+    },
+    "automation-agent": {
+      "core": "agy-sync-state",
+      "optional": [
+        "n8n-skills"
+      ]
+    }
+  },
+  "bundled": {
+    "agy-requirements": {
+      "path": ".agents/skills/agy-requirements/SKILL.md",
+      "version": "1.0.0"
+    },
+    "agy-planning": {
+      "path": ".agents/skills/agy-planning/SKILL.md",
+      "version": "1.0.0"
+    },
+    "agy-design-handoff": {
+      "path": ".agents/skills/agy-design-handoff/SKILL.md",
+      "version": "1.0.0"
+    },
+    "agy-frontend-delivery": {
+      "path": ".agents/skills/agy-frontend-delivery/SKILL.md",
+      "version": "1.0.0"
+    },
+    "agy-backend-contracts": {
+      "path": ".agents/skills/agy-backend-contracts/SKILL.md",
+      "version": "1.0.0"
+    },
+    "agy-qa-evidence": {
+      "path": ".agents/skills/agy-qa-evidence/SKILL.md",
+      "version": "1.0.0"
+    },
+    "agy-build-release": {
+      "path": ".agents/skills/agy-build-release/SKILL.md",
+      "version": "1.0.0"
+    },
+    "agy-sync-state": {
+      "path": ".agents/skills/agy-sync-state/SKILL.md",
+      "version": "1.0.0"
+    }
+  },
+  "external": {
+    "impeccable": {
+      "source": "https://github.com/pbakaus/impeccable",
+      "when": "Diseño o revisión visual con Impeccable elegido en el proyecto.",
+      "status": "candidate",
+      "revision": null
+    },
+    "figma-workflows": {
+      "source": "https://developers.figma.com/docs/figma-mcp-server/create-skills/",
+      "when": "Diseños en Figma; seleccionar las skills del proveedor compatibles con el cliente.",
+      "status": "candidate",
+      "revision": null
+    },
+    "pencil-workflows": {
+      "source": "https://docs.pencil.dev/getting-started/ai-integration",
+      "when": "Solo si Pencil corresponde a pencil.dev y se confirman sus herramientas y skills en la instalación.",
+      "status": "candidate",
+      "revision": null
+    },
+    "astro-guidance": {
+      "source": "https://docs.astro.build/en/guides/build-with-ai/",
+      "when": "Archivos Astro; referencia oficial para seleccionar instrucciones compatibles con la versión. No representa un paquete descargado.",
+      "status": "candidate",
+      "revision": null
+    },
+    "vercel-react-best-practices": {
+      "source": "https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices",
+      "when": "Componentes React o Next.js; aplicar solo reglas compatibles con la versión y arquitectura.",
+      "status": "candidate",
+      "revision": null
+    },
+    "next-workflows": {
+      "source": "https://github.com/vercel/next.js/tree/canary/skills",
+      "when": "Tareas específicas de Next.js; seleccionar workflow y documentación de la versión instalada.",
+      "status": "candidate",
+      "revision": null
+    },
+    "webapp-testing": {
+      "source": "https://github.com/anthropics/skills/tree/main/skills/webapp-testing",
+      "when": "Comprobaciones de navegador cuando las herramientas y el entorno de pruebas estén disponibles.",
+      "status": "candidate",
+      "revision": null
+    },
+    "nestjs-best-practices": {
+      "source": "https://github.com/Kadajett/agent-nestjs-skills",
+      "when": "Backend NestJS; candidata comunitaria a revisar sin reemplazar contratos Zod ni el pipeline TypeScript existente.",
+      "status": "candidate",
+      "revision": null
+    },
+    "supabase": {
+      "source": "https://github.com/supabase/agent-skills",
+      "when": "Solo si el proyecto utiliza Supabase.",
+      "status": "candidate",
+      "revision": null
+    },
+    "supabase-postgres-best-practices": {
+      "source": "https://github.com/supabase/agent-skills",
+      "when": "SQL o rendimiento de Postgres cuando el proyecto lo utiliza.",
+      "status": "candidate",
+      "revision": null
+    },
+    "n8n-skills": {
+      "source": "https://github.com/czlonkowski/n8n-skills",
+      "when": "Solo si la automatización elegida utiliza n8n; seleccionar las skills necesarias del paquete.",
+      "status": "candidate",
+      "revision": null
+    }
+  }
+}

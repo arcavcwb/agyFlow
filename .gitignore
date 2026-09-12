@@ -1,0 +1,8 @@
+.agents/mcp_config.json
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+*$py.class
+.DS_Store
