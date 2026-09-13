@@ -128,6 +128,84 @@ def validate_skills(root, read, errors):
             errors.append(f"{relative}: estado o revisión externa inválidos: {skill}")
 
 
+def validate_ai_pr_reviewer(root, read, errors):
+    """Validate AI PR Reviewer module if present; skip silently if absent."""
+    reviewer_dir = root / "tools" / "ai-pr-reviewer"
+    workflow_path = root / ".github" / "workflows" / "ai-pr-review.yml"
+    docs_path = root / "docs" / "ai-pr-reviewer.md"
+    if not any(path.exists() for path in
+               (reviewer_dir, workflow_path, docs_path)):
+        return  # Optional module not installed
+
+    # 1. Required files
+    required_files = [
+        "README.md", "prompt.md", "policy.md",
+        "review_agent.py", "requirements.txt",
+    ]
+    module_files = {}
+    for name in required_files:
+        relative = f"tools/ai-pr-reviewer/{name}"
+        module_files[name] = read(relative)
+
+    # 2. Policy completeness
+    policy = read("tools/ai-pr-reviewer/policy.md")
+    if policy:
+        for section in ("Acceso permitido", "Acceso prohibido",
+                        "Gestión de la API key"):
+            if section not in policy:
+                errors.append(
+                    f"tools/ai-pr-reviewer/policy.md: "
+                    f"falta sección '{section}'"
+                )
+
+    # 3. No hardcoded API keys
+    key_pattern = re.compile(r"AIza[A-Za-z0-9_-]{30,}")
+    for check_file in (
+        "tools/ai-pr-reviewer/review_agent.py",
+        "tools/ai-pr-reviewer/prompt.md",
+        "tools/ai-pr-reviewer/policy.md",
+        ".github/workflows/ai-pr-review.yml",
+        "docs/ai-pr-reviewer.md",
+    ):
+        content = read(check_file)
+        if content and key_pattern.search(content):
+            errors.append(f"{check_file}: posible API key hardcodeada")
+
+    # 4. Workflow uses secrets reference
+    workflow = read(".github/workflows/ai-pr-review.yml")
+    if workflow:
+        if "secrets.GEMINI_API_KEY" not in workflow:
+            errors.append(
+                ".github/workflows/ai-pr-review.yml: "
+                "debe usar secrets.GEMINI_API_KEY"
+            )
+        if "contents: read" not in workflow:
+            errors.append(
+                ".github/workflows/ai-pr-review.yml: "
+                "debe declarar permissions contents: read"
+            )
+        if "steps.review.outputs.exit_code != '0'" not in workflow:
+            errors.append(
+                ".github/workflows/ai-pr-review.yml: "
+                "debe fallar si el reviewer no completa la revisión"
+            )
+
+    reviewer = module_files.get("review_agent.py", "")
+    if reviewer:
+        if "response_json_schema" not in reviewer:
+            errors.append(
+                "tools/ai-pr-reviewer/review_agent.py: "
+                "falta esquema de respuesta estructurada"
+            )
+        if "gemini-2.0" in reviewer:
+            errors.append(
+                "tools/ai-pr-reviewer/review_agent.py: usa un modelo retirado"
+            )
+
+    # 5. Documentation exists
+    read("docs/ai-pr-reviewer.md")
+
+
 def validate(root: Path, project: bool) -> list[str]:
     root = root.resolve()
     errors = []
@@ -180,6 +258,7 @@ def validate(root: Path, project: bool) -> list[str]:
             errors.append(f"AGENTS.md: falta {name}")
 
     validate_skills(root, read, errors)
+    validate_ai_pr_reviewer(root, read, errors)
 
     relative = ".agents/mcp_config.example.json"
     raw = read(relative)

@@ -25,7 +25,7 @@ class PackageValidationTests(unittest.TestCase):
         self.root.mkdir()
         for name in ("AGENTS.md", "README.md"):
             shutil.copy2(SOURCE / name, self.root / name)
-        for name in (".agents", "config", "docs", "templates"):
+        for name in (".agents", ".github", "config", "docs", "templates", "tools"):
             shutil.copytree(SOURCE / name, self.root / name)
         self.registry_path = self.root / "config/skills.json"
         self.registry = json.loads(self.registry_path.read_text())

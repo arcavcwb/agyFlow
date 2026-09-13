@@ -43,13 +43,18 @@ def distribution_files():
     """Explicit distribution boundaries: never copy a receiver's credentials or reports."""
     result = []
     for name in ('AGENTS.md', 'README.md', '.pre-commit-config.yaml',
-                 '.agents/mcp_config.example.json', '.github/workflows/validate-squad.yml'):
+                 '.agents/mcp_config.example.json',
+                 '.github/workflows/validate-squad.yml',
+                 '.github/workflows/ai-pr-review.yml'):
         result.append(Path(name))
     for pattern in ('.agents/agents/*/agent.md', '.agents/skills/*/SKILL.md',
                     'config/skills.json', 'templates/*.md', 'templates/*.json',
-                    'scripts/*.py', 'tests/test_*.py'):
-        result.extend(p.relative_to(TEMPLATE_ROOT) for p in TEMPLATE_ROOT.glob(pattern))
-    for name in ('protocolo.md', 'agy-codex.md', 'stack.md', 'skills.md', 'herramientas-locales.md'):
+                    'scripts/*.py', 'tests/test_*.py',
+                    'tools/ai-pr-reviewer/*'):
+        result.extend(p.relative_to(TEMPLATE_ROOT)
+                      for p in TEMPLATE_ROOT.glob(pattern) if p.is_file())
+    for name in ('protocolo.md', 'agy-codex.md', 'stack.md', 'skills.md',
+                 'herramientas-locales.md', 'ai-pr-reviewer.md'):
         if (TEMPLATE_ROOT / 'docs' / name).is_file():
             result.append(Path('docs') / name)
     if (TEMPLATE_ROOT / 'docs/demo-flujo.html').is_file():
@@ -111,7 +116,11 @@ def scaffold_receiver(target_dir: Path, frontend=None, backend=None, db=None,
     # Merge ignores, retaining receiver rules. No live MCP config is distributed.
     ignore = safe_destination(root, Path('.gitignore'))
     old_ignore = ignore.read_text(encoding='utf-8') if ignore.exists() else ''
-    rules = ['.agents/mcp_config.json', '.env', '.env.*', '!.env.example', '__pycache__/', '.agyflow-backups/']
+    rules = [
+        '.agents/mcp_config.json', '.env', '.env.*', '!.env.example',
+        '__pycache__/', '.agyflow-backups/', 'pr_diff.txt',
+        'review_report.md', 'review_result.json',
+    ]
     missing = [rule for rule in rules if rule not in old_ignore.splitlines()]
     if missing:
         files[Path('.gitignore')] = (old_ignore.rstrip('\n') + ('\n' if old_ignore else '') + '\n'.join(missing) + '\n').encode()

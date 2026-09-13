@@ -21,6 +21,7 @@ entornos y despliegues pertenecen al proyecto receptor.
   evidencias y simular el recorrido.
 - Diagramas Excalidraw/Excalidash para analizar el flujo y el sistema visual.
 - Guia para trabajar con agy y Codex en paralelo.
+- Reviewer opcional de pull requests con Gemini, deshabilitado por defecto.
 
 El stack de referencia contempla Plane, Astro, React, Next.js, Node.js, NestJS,
 Figma/Pencil, Supabase y n8n segun lo decida cada proyecto. Mencionarlos aqui
@@ -40,6 +41,7 @@ docs/agy-codex.md
 docs/skills.md
 docs/stack.md
 docs/herramientas-locales.md
+docs/ai-pr-reviewer.md
 docs/demo-flujo.html
 docs/diagrams/
   agyflow-super-mvp.excalidraw
@@ -58,6 +60,10 @@ scripts/
   setup_receiver.py
   pipeline.py
   demo_workflow.py
+tools/ai-pr-reviewer/
+  review_agent.py
+  prompt.md
+  policy.md
 tests/
   test_validate_squad.py
   test_handoff.py
@@ -65,6 +71,7 @@ tests/
   test_pipeline.py
 .vscode/tasks.json
 .github/workflows/validate-squad.yml
+.github/workflows/ai-pr-review.yml
 ```
 
 `architecture.md` no vive en esta plantilla. Lo aporta el humano en cada proyecto
@@ -214,6 +221,18 @@ La skill `agy-security-audit` queda disponible para revisiones de seguridad de Q
 y Backend. Las skills externas dependen del proyecto y de las herramientas
 instaladas en ese entorno.
 
+## Reviewer opcional de PR
+
+`tools/ai-pr-reviewer` analiza el diff de un pull request mediante Gemini antes
+de QA. Se habilita de forma explícita con la variable de repositorio
+`ENABLE_AI_PR_REVIEW=true` y el secret `GEMINI_API_KEY`. El workflow falla ante
+hallazgos críticos y también cuando la revisión no puede completarse. Su reporte
+es evidencia auxiliar: no aprueba QA ni reemplaza la revisión humana.
+
+El diff se procesa mediante un proveedor externo. Antes de habilitarlo, revisá
+las reglas de privacidad del proyecto. La configuración, limitaciones y política
+completas están en `docs/ai-pr-reviewer.md`.
+
 ## Diagramas
 
 `docs/diagrams/agyflow-flujo-completo.excalidraw` muestra la operacion completa
@@ -225,7 +244,8 @@ Excalidash; las vistas SVG/PNG son solo previsualizaciones.
 ## Limites
 
 El validador comprueba estructura, nombres, frontmatter básico, formato de la
-plantilla MCP, documentación y asignaciones de skills con rutas portables.
+plantilla MCP, documentación, asignaciones de skills con rutas portables y la
+integridad del reviewer opcional cuando alguno de sus archivos está presente.
 `--project` agrega presencia y contenido minimo de documentos del receptor. No
 valida semantica del runtime, conectividad, aprobaciones humanas, calidad de
 contratos ni que una aplicacion pase sus pruebas.

@@ -27,6 +27,9 @@ class SetupReceiverTests(unittest.TestCase):
         self.assertIn('Estado: borrador', (self.root / 'PRD.md').read_text())
         self.assertTrue(list((self.root / 'tests').glob('test_*.py')))
         self.assertTrue((self.root / '.github/workflows/validate-squad.yml').exists())
+        self.assertTrue((self.root / '.github/workflows/ai-pr-review.yml').exists())
+        self.assertTrue((self.root / 'tools/ai-pr-reviewer/review_agent.py').exists())
+        self.assertTrue((self.root / 'docs/ai-pr-reviewer.md').exists())
         self.assertTrue((self.root / '.gitignore').exists())
 
     def test_force_preserves_foreign_files_architecture_and_product_documents(self):
@@ -78,6 +81,15 @@ class SetupReceiverTests(unittest.TestCase):
         self.assertNotIn(Path('.env'), setup.distribution_files())
         self.install()
         self.assertFalse((self.root / '.agents/mcp_config.json').exists())
+
+    def test_ai_reviewer_is_distributed_but_disabled_by_default(self):
+        files = setup.distribution_files()
+        self.assertIn(Path('tools/ai-pr-reviewer/review_agent.py'), files)
+        self.assertIn(Path('.github/workflows/ai-pr-review.yml'), files)
+        self.install()
+        workflow = (self.root / '.github/workflows/ai-pr-review.yml').read_text()
+        self.assertIn("ENABLE_AI_PR_REVIEW == 'true'", workflow)
+        self.assertNotIn(Path('.env'), files)
 
     def test_existing_ignores_are_preserved(self):
         self.root.mkdir()
