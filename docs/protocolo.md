@@ -176,6 +176,12 @@ debe referenciar ese artefacto y el destino exacto.
 
 ## Herramientas no disponibles
 
+Los asistentes locales se describen en `docs/herramientas-locales.md`. Sus JSON
+son exportaciones opcionales de evidencia, con rutas asignadas al coordinador;
+no sustituyen Plane, las fuentes originales, los permisos ni la activación humana.
+La aprobación registrada del PRD se vincula a su contenido exacto. Ningún resultado
+de consistencia de estos asistentes acredita por sí solo un QA o despliegue real.
+
 Las skills propias asignadas están en `config/skills.json`; su uso se explica
 en `docs/skills.md`. El stack de referencia está en `docs/stack.md`.
 Una mención de skill o MCP no demuestra que esté instalado. Confirmá las

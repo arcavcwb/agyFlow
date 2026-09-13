@@ -59,6 +59,7 @@ def validate_skills(root, read, errors):
     if set(assignments) != AGENTS:
         errors.append(f"{relative}: asignaciones incompletas o agentes desconocidos")
     used_core = set()
+    used_optional_bundled = set()
     for name, assignment in assignments.items():
         if not isinstance(assignment, dict):
             errors.append(f"{relative}: asignación inválida: {name}")
@@ -77,9 +78,12 @@ def validate_skills(root, read, errors):
         optional = assignment.get("optional")
         if not isinstance(optional, list) or not all(isinstance(k, str) for k in optional):
             errors.append(f"{relative}: optional inválido: {name}")
-        elif len(set(optional)) != len(optional) or any(k not in external for k in optional):
+        elif len(set(optional)) != len(optional) or any(k not in external and k not in bundled for k in optional):
             errors.append(f"{relative}: optional duplicado o desconocido: {name}")
-    if set(bundled) != used_core:
+        else:
+            used_optional_bundled.update(k for k in optional if k in bundled)
+    all_assigned_bundled = used_core | used_optional_bundled
+    if set(bundled) != all_assigned_bundled:
         errors.append(f"{relative}: skills incluidas sin asignación válida")
     for skill, entry in bundled.items():
         if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", skill) or len(skill) > 64:

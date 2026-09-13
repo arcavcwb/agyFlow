@@ -1,145 +1,178 @@
 #!/usr/bin/env python3
-"""Scaffold and initialize an agyFlow receiver project with verified inputs and architecture."""
-
+"""Copy a portable squad safely and prepare proposals for human review."""
 import argparse
 from pathlib import Path
 import shutil
 import sys
+import tempfile
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
+CHOICES = {
+    'frontend': ('next', 'astro', 'hybrid'),
+    'backend': ('nestjs', 'node'),
+    'db': ('supabase', 'postgres', 'none'),
+    'state_manager': ('scrum-manual', 'automation'),
+}
 
 
-def generate_architecture_md(frontend: str, backend: str, db: str) -> str:
-    fe_desc = {
-        "next": "Next.js (apps/web) para la aplicación interactiva.",
-        "astro": "Astro (apps/site) para páginas y sitios estáticos / SSG.",
-        "hybrid": "Next.js (apps/web) para app cliente y Astro (apps/site) para portal/marketing.",
-    }.get(frontend, "Next.js / Astro según superficie.")
+def generate_architecture_md(frontend=None, backend=None, db=None):
+    return f'''# Propuesta de arquitectura — pendiente de revisión humana
 
-    be_desc = {
-        "nestjs": "NestJS para servicios modulares estructurados.",
-        "node": "Node.js / Express o Fastify para servicios y APIs.",
-    }.get(backend, "Servicios Node.js / NestJS.")
+Este borrador no es architecture.md, no constituye aprobación ni define contratos.
+El humano decide las versiones, rutas, despliegue, pruebas y permisos del proyecto.
 
-    db_desc = {
-        "supabase": "Supabase (PostgreSQL + RLS explícito y autenticación).",
-        "postgres": "PostgreSQL directo con migraciones SQL.",
-        "none": "Sin base de datos dedicada inicial / persistencia delegada.",
-    }.get(db, "Persistencia según definición del proyecto.")
+## Preferencias solicitadas
 
-    return f"""# Architecture & Technical Decisions
+- Frontend: {frontend or 'por definir'}
+- Backend: {backend or 'por definir'}
+- Persistencia: {db or 'por definir'}
 
-> Gobernanza humana: este archivo define el stack y las rutas oficiales del proyecto receptor.
-> Ningún agente modifica este archivo sin autorización humana explícita.
+## Decisiones pendientes
 
-## Stack seleccionado
+- Superficies, frameworks, versiones y rutas reales.
+- Contratos necesarios, consumidores y reglas de negocio.
+- Diseño de referencia, estados y criterios de accesibilidad.
+- Autenticación, autorización y tratamiento de datos según riesgos.
+- Pruebas, build, entorno, despliegue y recuperación.
 
-- **Frontend**: {fe_desc}
-- **Backend**: {be_desc}
-- **Persistencia**: {db_desc}
-- **Contratos compartidos**: `packages/contracts` con esquemas Zod y tipos TypeScript inferidos.
-- **Testing y QA**: Playwright para E2E / pruebas de navegador; suites de integración y unitarias locales.
-
-## Rutas del proyecto
-
-- `apps/`: aplicaciones cliente e interfaz.
-- `packages/contracts/src/`: esquemas y tipos compartidos (escritura Backend, lectura Frontend).
-- `tests/`: pruebas automatizadas y reportes de QA (`bug_report.md`).
-- `docs/`: documentación de arquitectura, despliegues y guías operativas.
-
-## Convenciones de contrato
-
-1. Todo contrato de datos entre Frontend y Backend se define primero en `packages/contracts/src/` con Zod.
-2. Ninguna ruta de frontend asume contratos no publicados o no verificados.
-3. Las tablas de base de datos no se publican sin políticas de seguridad explícitas (RLS).
-"""
+La persona responsable debe aportar architecture.md con las decisiones revisadas.
+'''
 
 
-def scaffold_receiver(target_dir: Path, frontend: str, backend: str, db: str,
-                       state_manager: str, force: bool = False, copy_squad: bool = True) -> list[Path]:
-    created = []
-    target_dir.mkdir(parents=True, exist_ok=True)
+def distribution_files():
+    """Explicit distribution boundaries: never copy a receiver's credentials or reports."""
+    result = []
+    for name in ('AGENTS.md', 'README.md', '.pre-commit-config.yaml',
+                 '.agents/mcp_config.example.json', '.github/workflows/validate-squad.yml'):
+        result.append(Path(name))
+    for pattern in ('.agents/agents/*/agent.md', '.agents/skills/*/SKILL.md',
+                    'config/skills.json', 'templates/*.md', 'templates/*.json',
+                    'scripts/*.py', 'tests/test_*.py'):
+        result.extend(p.relative_to(TEMPLATE_ROOT) for p in TEMPLATE_ROOT.glob(pattern))
+    for name in ('protocolo.md', 'agy-codex.md', 'stack.md', 'skills.md', 'herramientas-locales.md'):
+        if (TEMPLATE_ROOT / 'docs' / name).is_file():
+            result.append(Path('docs') / name)
+    if (TEMPLATE_ROOT / 'docs/demo-flujo.html').is_file():
+        result.append(Path('docs/demo-flujo.html'))
+    if (TEMPLATE_ROOT / 'docs/diagrams').is_dir():
+        result.extend(p.relative_to(TEMPLATE_ROOT) for p in (TEMPLATE_ROOT / 'docs/diagrams').iterdir()
+                      if p.suffix in {'.md', '.excalidraw', '.svg', '.png'})
+    return sorted(set(result))
 
-    # 1. Copy squad template files if requested and target is not TEMPLATE_ROOT
-    if copy_squad and target_dir.resolve() != TEMPLATE_ROOT.resolve():
-        for item in ["AGENTS.md", "README.md"]:
-            dest = target_dir / item
-            if not dest.exists() or force:
-                shutil.copy2(TEMPLATE_ROOT / item, dest)
-                created.append(dest)
-        for folder in [".agents", "config", "docs", "templates", "scripts"]:
-            dest = target_dir / folder
-            if not dest.exists() or force:
-                if dest.exists() and force:
-                    shutil.rmtree(dest)
-                shutil.copytree(TEMPLATE_ROOT / folder, dest)
-                created.append(dest)
 
-    # 2. architecture.md
-    arch_file = target_dir / "architecture.md"
-    if not arch_file.exists() or force:
-        arch_file.write_text(generate_architecture_md(frontend, backend, db), encoding="utf-8")
-        created.append(arch_file)
+def safe_destination(root, relative):
+    path = root / relative
+    for part in [path, *path.parents]:
+        if part == root:
+            break
+        if part.is_symlink():
+            raise ValueError(f'Destino con enlace simbólico: {relative}')
+    if path.exists() and not path.is_file():
+        raise ValueError(f'Se esperaba un archivo: {relative}')
+    for part in path.parents:
+        if part == root:
+            break
+        if part.exists() and not part.is_dir():
+            raise ValueError(f'Un archivo impide crear el directorio: {part}')
+    return path
 
-    # 3. PRD.md (from template)
-    prd_file = target_dir / "PRD.md"
-    if not prd_file.exists() or force:
-        template_prd = (TEMPLATE_ROOT / "templates/PRD.md").read_text(encoding="utf-8")
-        prd_file.write_text(template_prd, encoding="utf-8")
-        created.append(prd_file)
 
-    # 4. sprint_actual.md (from template with state manager prefilled)
-    sprint_file = target_dir / "sprint_actual.md"
-    if not sprint_file.exists() or force:
-        template_sprint = (TEMPLATE_ROOT / "templates/sprint_actual.md").read_text(encoding="utf-8")
-        mgr_text = "Scrum manual" if state_manager == "scrum-manual" else "Automation"
-        template_sprint = template_sprint.replace(
-            "Responsable de estado operativo y espejo: por asignar (Scrum manual o Automation)",
-            f"Responsable de estado operativo y espejo: {mgr_text}"
-        )
-        sprint_file.write_text(template_sprint, encoding="utf-8")
-        created.append(sprint_file)
+def scaffold_receiver(target_dir: Path, frontend=None, backend=None, db=None,
+                      state_manager=None, force=False, copy_squad=True, dry_run=False) -> list[Path]:
+    for name, value in [('frontend', frontend), ('backend', backend), ('db', db), ('state_manager', state_manager)]:
+        if value is not None and value not in CHOICES[name]:
+            raise ValueError(f'{name} inválido: {value}')
+    root = target_dir.resolve()
+    source = TEMPLATE_ROOT.resolve()
+    if root == source or root.is_relative_to(source) or source.is_relative_to(root):
+        raise ValueError('El destino debe estar separado del árbol de la plantilla.')
+    if root.exists() and not root.is_dir():
+        raise ValueError('El destino debe ser un directorio.')
 
-    # 5. packages/contracts/src/index.ts
-    contracts_dir = target_dir / "packages/contracts/src"
-    contracts_dir.mkdir(parents=True, exist_ok=True)
-    contracts_entry = contracts_dir / "index.ts"
-    if not contracts_entry.exists() or force:
-        contracts_entry.write_text("// Shared contracts and Zod schemas for agyFlow squad\nexport type BaseEntity = { id: string; createdAt: string };\n", encoding="utf-8")
-        created.append(contracts_entry)
-
-    # 6. tests/ directory
-    tests_dir = target_dir / "tests"
-    tests_dir.mkdir(parents=True, exist_ok=True)
-
-    return created
+    files = {}
+    if copy_squad:
+        for relative in distribution_files():
+            src = source / relative
+            if src.is_symlink() or not src.resolve().is_relative_to(source):
+                raise ValueError(f'Origen no portable: {relative}')
+            files[relative] = src.read_bytes()
+    # Generated drafts never replace existing documents, even with --force.
+    drafts = {
+        Path('architecture.proposed.md'): generate_architecture_md(frontend, backend, db).encode(),
+        Path('project_setup.proposed.md'): (
+            '# Preferencias de adopción — no verificadas\n\n'
+            f'Responsable operativo solicitado: {state_manager or "por asignar"}.\n'
+            'La asignación y las herramientas requieren evidencia humana y comprobación.\n'
+        ).encode(),
+        Path('PRD.md'): (source / 'templates/PRD.md').read_bytes(),
+        Path('sprint_actual.md'): (source / 'templates/sprint_actual.md').read_bytes(),
+    }
+    files.update(drafts)
+    # Merge ignores, retaining receiver rules. No live MCP config is distributed.
+    ignore = safe_destination(root, Path('.gitignore'))
+    old_ignore = ignore.read_text(encoding='utf-8') if ignore.exists() else ''
+    rules = ['.agents/mcp_config.json', '.env', '.env.*', '!.env.example', '__pycache__/', '.agyflow-backups/']
+    missing = [rule for rule in rules if rule not in old_ignore.splitlines()]
+    if missing:
+        files[Path('.gitignore')] = (old_ignore.rstrip('\n') + ('\n' if old_ignore else '') + '\n'.join(missing) + '\n').encode()
+    changes = []
+    for relative, content in sorted(files.items()):
+        dest = safe_destination(root, relative)
+        if dest.exists():
+            if dest.read_bytes() == content:
+                continue
+            if relative != Path('.gitignore') and (relative in drafts or not force):
+                continue
+        changes.append((dest, content))
+    if dry_run:
+        return [p for p, _ in changes]
+    backup_root = root / '.agyflow-backups'
+    if any(dest.exists() for dest, _ in changes):
+        if backup_root.is_symlink() or (backup_root.exists() and not backup_root.is_dir()):
+            raise ValueError('El destino de respaldos debe ser un directorio sin enlaces.')
+    root.mkdir(parents=True, exist_ok=True)
+    backup = None
+    for dest, content in changes:
+        if dest.exists():
+            if backup is None:
+                backup_root.mkdir(exist_ok=True)
+                backup = Path(tempfile.mkdtemp(prefix='setup-', dir=backup_root))
+            saved = backup / dest.relative_to(root)
+            saved.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(dest, saved)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        # Atomic replacement avoids truncated individual files on interrupted writes.
+        with tempfile.NamedTemporaryFile(dir=dest.parent, delete=False) as handle:
+            staged = Path(handle.name)
+            handle.write(content)
+        try:
+            staged.replace(dest)
+        finally:
+            staged.unlink(missing_ok=True)
+    return [p for p, _ in changes]
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--target", type=Path, default=Path.cwd(), help="Directorio destino del proyecto receptor")
-    parser.add_argument("--frontend", choices=["next", "astro", "hybrid"], default="hybrid", help="Superficie frontend principal")
-    parser.add_argument("--backend", choices=["nestjs", "node"], default="nestjs", help="Framework de backend")
-    parser.add_argument("--db", choices=["supabase", "postgres", "none"], default="supabase", help="Sistema de base de datos")
-    parser.add_argument("--state-manager", choices=["scrum-manual", "automation"], default="scrum-manual", help="Responsable del estado operativo del sprint")
-    parser.add_argument("--force", action="store_true", help="Sobreescribir archivos si ya existen")
-    parser.add_argument("--no-squad-copy", dest="copy_squad", action="store_false", help="No copiar los archivos del squad de agyFlow")
-
+    parser.add_argument('--target', type=Path, required=True)
+    for name, choices in CHOICES.items():
+        parser.add_argument('--' + name.replace('_', '-'), choices=choices)
+    parser.add_argument('--force', action='store_true', help='Actualizar archivos distribuidos, con respaldo; conserva borradores y archivos ajenos')
+    parser.add_argument('--dry-run', action='store_true', help='Mostrar archivos a cambiar sin escribir')
+    parser.add_argument('--no-squad-copy', dest='copy_squad', action='store_false')
     args = parser.parse_args()
-
-    created = scaffold_receiver(
-        target_dir=args.target,
-        frontend=args.frontend,
-        backend=args.backend,
-        db=args.db,
-        state_manager=args.state_manager,
-        force=args.force,
-        copy_squad=args.copy_squad,
-    )
-
-    print(f"Scaffolding completado en {args.target.resolve()}. Archivos generados/actualizados: {len(created)}")
+    try:
+        paths = scaffold_receiver(args.target, args.frontend, args.backend, args.db,
+                                  args.state_manager, args.force, args.copy_squad, args.dry_run)
+    except (OSError, ValueError, UnicodeError) as exc:
+        print(f'ERROR: {exc}', file=sys.stderr)
+        return 1
+    print('Vista previa (sin escrituras):' if args.dry_run else 'Archivos creados/actualizados:')
+    for path in paths:
+        print(path)
+    print(f'{len(paths)} archivos. Documentos existentes conservados salvo actualización explícita del paquete; revisar conflictos manualmente.')
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     sys.exit(main())

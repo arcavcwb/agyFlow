@@ -13,7 +13,7 @@ Cubre de forma exhaustiva las 6 dimensiones del framework agéntico:
 | **02 · El Squad de 8 Agentes y Dominios** | Tarjetas con las 8 subagents, sus skills propias en `.agents/skills/`, dominios y reglas de oro. |
 | **03 · Flujo de Entrega Handoff End-to-End** | Pipeline visual desde Brief, PRD, Plane, fases paralelas (Diseño/Contratos), Devs, QA y Staging/Prod. |
 | **04 · Las Tres Reglas de Oro Operativas** | Pilares no negociables: 1. Cero Asunción, 2. Circuit Breaker (tope 3 rechazos con clave estable), 3. Un solo escritor. |
-| **05 · Kit de Herramientas y Automatización CLI** | `validate_squad.py`, `handoff.py`, `setup_receiver.py`, suite de 24 tests unitarios y CI en GitHub Actions. |
+| **05 · Kit de Herramientas y Automatización CLI** | `validate_squad.py`, `handoff.py`, `setup_receiver.py`, suite local de tests unitarios y CI en GitHub Actions. |
 | **06 · Cómo se Usa en la Práctica** | Guía paso a paso para inicializar y desarrollar un producto real en un proyecto receptor. |
 
 ---

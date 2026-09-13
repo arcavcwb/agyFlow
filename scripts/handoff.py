@@ -2,6 +2,7 @@
 """Assist handoffs between agyFlow squad agents according to protocol and agy-codex guidelines."""
 
 import argparse
+import json
 from pathlib import Path
 import sys
 
@@ -10,16 +11,39 @@ AGENTS = {
     "frontend-dev-agent", "qa-agent", "devops-agent", "automation-agent",
 }
 
+# These are local evidence fields, not API fields from Plane or a client runtime.
 PRECONDITIONS = {
     "po-agent": ["brief"],
-    "scrum-master-agent": ["prd", "aprobac"],
-    "designer-agent": ["ticket"],
-    "backend-dev-agent": ["ticket"],
-    "frontend-dev-agent": ["contrato", "list"],
-    "qa-agent": ["revisi"],
-    "devops-agent": ["qa", "aproba"],
-    "automation-agent": ["plane"],
+    "scrum-master-agent": ["prd_approval", "plane"],
+    "designer-agent": ["architecture", "ticket", "design_reference"],
+    "backend-dev-agent": ["architecture", "ticket"],
+    "frontend-dev-agent": ["architecture", "ticket", "contracts", "design"],
+    "qa-agent": ["architecture", "ticket", "candidate", "criteria", "environment", "tests"],
+    "devops-agent": ["architecture", "ticket", "qa", "artifact"],
+    "automation-agent": ["architecture", "ticket", "plane", "state_owner"],
 }
+
+
+def load_evidence(text):
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"Campo JSON duplicado: {key}")
+            result[key] = value
+        return result
+    try:
+        data = json.loads(text, object_pairs_hook=unique)
+    except (ValueError, TypeError) as exc:
+        raise ValueError("Se requiere evidencia JSON explícita; el texto libre no acredita precondiciones.") from exc
+    if not isinstance(data, dict) or type(data.get("schema_version")) is not int or data["schema_version"] != 1:
+        raise ValueError("Se requiere un objeto con schema_version: 1.")
+    return data
+
+
+def specified(value):
+    return (isinstance(value, str) and bool(value.strip())
+            and value.strip().lower() not in {"pendiente", "por asignar", "unknown", "todo"})
 
 
 def build_prompt(target_role: str, ticket: str, routes: str,
@@ -31,7 +55,7 @@ def build_prompt(target_role: str, ticket: str, routes: str,
     lines = [
         f"Leé AGENTS.md, docs/protocolo.md, docs/agy-codex.md, docs/stack.md y el archivo del rol .agents/agents/{target_role}/agent.md.",
         f"Tu rol asignado es [{target_role}].",
-        f"Implementá el ticket [{ticket}] en el alcance de rutas asignado: [{routes}].",
+        f"Ejecutá la tarea de tu rol para [{ticket}] en el alcance asignado: [{routes}].",
         f"Tu etiqueta de sesión es [{session}]. La otra sesión tiene asignado: [{other_session}].",
     ]
 
@@ -50,21 +74,63 @@ def build_prompt(target_role: str, ticket: str, routes: str,
     return "\n".join(lines)
 
 
-def check_preconditions(role: str, text: str) -> tuple[bool, list[str]]:
+def check_preconditions(role: str, text: str, *, revision=None, qa_run=None, ticket=None) -> tuple[bool, list[str]]:
     if role not in AGENTS:
         return False, [f"Rol desconocido: {role}"]
-
-    required_keywords = PRECONDITIONS.get(role, [])
-    lowered = text.lower()
-    missing = []
-
-    for kw in required_keywords:
-        if kw not in lowered:
-            missing.append(kw)
-
-    if missing:
-        return False, [f"Faltan evidencias o palabras clave requeridas para {role}: {missing}"]
-    return True, []
+    try:
+        data = load_evidence(text)
+    except ValueError as exc:
+        return False, [str(exc)]
+    errors = []
+    if data.get("target_role") != role:
+        errors.append("target_role no coincide con el destinatario.")
+    if not specified(data.get("ticket")):
+        errors.append("Falta ticket o identificador del encargo.")
+    if ticket is not None and data.get("ticket") != ticket:
+        errors.append("El ticket no coincide con la candidata vigente.")
+    if not specified(data.get("revision")):
+        errors.append("Falta revisión de entrada.")
+    inputs = data.get("inputs")
+    if not isinstance(inputs, dict):
+        return False, errors + ["inputs debe ser un objeto."]
+    phase = data.get("phase", "delivery")
+    if not isinstance(phase, str) or phase not in {"delivery", "preparation"} or (phase == "preparation" and role not in {"qa-agent", "devops-agent"}):
+        return False, errors + ["phase inválida para el rol."]
+    required = PRECONDITIONS[role]
+    if phase == "preparation":
+        required = ["architecture", "ticket"]
+    for name in required:
+        item = inputs.get(name)
+        if not isinstance(item, dict):
+            errors.append(f"Falta evidencia: {name}.")
+            continue
+        if name in {"contracts", "design", "design_reference"} and item.get("status") == "not_applicable":
+            if not specified(item.get("reason")):
+                errors.append(f"{name}: no aplica requiere motivo.")
+            continue
+        expected = "approved" if name in {"qa", "prd_approval"} else "ready"
+        if item.get("status") != expected:
+            errors.append(f"{name}: estado requerido {expected}; recibido {item.get('status')!r}.")
+        if not specified(item.get("reference")) or not specified(item.get("revision")):
+            errors.append(f"{name}: requiere reference y revision identificables.")
+    # Compare with an independent candidate supplied by the caller, never with an old report in the prose.
+    if phase == "delivery" and role in {"qa-agent", "devops-agent"}:
+        if not specified(revision) or not specified(qa_run) or not specified(ticket):
+            errors.append("Se requiere candidata externa: ticket, revision y qa_run vigentes.")
+        if data.get("revision") != revision or data.get("qa_run") != qa_run:
+            errors.append("Revisión o ejecución QA desactualizada.")
+        for name in (["qa", "artifact"] if role == "devops-agent" else ["candidate"]):
+            item = inputs.get(name, {})
+            if not isinstance(item, dict):
+                continue
+            if item.get("revision") != revision:
+                errors.append(f"{name}: no corresponde a la revisión candidata.")
+            if name == "qa":
+                if item.get("qa_run") != qa_run:
+                    errors.append("qa: ejecución desactualizada.")
+                if item.get("pending_checks") != [] or item.get("blockers") != []:
+                    errors.append("qa: declarar listas vacías de pending_checks y blockers para entregar.")
+    return not errors, errors
 
 
 def get_template(role: str = None, session: str = "agy-1") -> str:
@@ -92,7 +158,10 @@ def main():
     # Subcommand: check
     check_parser = subparsers.add_parser("check", help="Verificar precondiciones de entrada para un rol")
     check_parser.add_argument("--role", required=True, help="Rol que se quiere activar")
-    check_parser.add_argument("--input", dest="input_file", help="Ruta al archivo de entrega o sprint a comprobar")
+    check_parser.add_argument("--input", dest="input_file", help="Archivo JSON de evidencias; por defecto stdin")
+    check_parser.add_argument("--revision", help="Revisión candidata vigente (QA y despliegue)")
+    check_parser.add_argument("--qa-run", help="Ejecución QA vigente")
+    check_parser.add_argument("--ticket", help="Ticket de la candidata vigente")
 
     # Subcommand: template
     template_parser = subparsers.add_parser("template", help="Emitir template de entrega.md pre-rellenado")
@@ -117,13 +186,14 @@ def main():
             return 1
 
     elif args.command == "check":
-        if args.input_file:
-            content = Path(args.input_file).read_text(encoding="utf-8")
-        else:
-            content = sys.stdin.read()
-        ok, errors = check_preconditions(args.role, content)
+        try:
+            content = Path(args.input_file).read_text(encoding="utf-8") if args.input_file else sys.stdin.read()
+        except (OSError, UnicodeError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+        ok, errors = check_preconditions(args.role, content, revision=args.revision, qa_run=args.qa_run, ticket=args.ticket)
         if ok:
-            print(f"OK: Precondiciones satisfechas para {args.role}.")
+            print(f"OK: Declaraciones consistentes para {args.role}; verificar fuentes y permisos antes de actuar.")
             return 0
         else:
             for err in errors:

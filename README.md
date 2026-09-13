@@ -1,14 +1,30 @@
-# agyFlow — plantilla reutilizable de desarrollo agéntico
+# agyFlow
 
-Este repositorio mantiene una plantilla para copiar y adaptar a otros proyectos,
-con ocho roles y fases activadas explícitamente por una persona. Incluye
-instrucciones para agy y Codex, protocolo de entregas y formatos de evidencia.
-Cada rol incluye una skill propia. El stack de referencia es Plane, Astro,
-React, Next.js, Node.js, NestJS y diseño con Figma/Pencil según el proyecto.
+agyFlow es una plantilla reutilizable para desarrollar un **SUPER MVP** con un
+squad de agentes: PO, Scrum Master, Designer, Frontend, Backend, QA, DevOps y
+Automation. Su foco es entregar rápido sin perder cuatro cosas que suelen romper
+un MVP acelerado: calidad visual, seguridad, arquitectura clara y simplicidad de
+implementacion.
 
-Aquí se desarrolla y valida la plantilla. La aplicación, su arquitectura, PRD,
-sprint, contratos, credenciales y despliegues pertenecen a cada proyecto receptor.
-Su ausencia en agyFlow es esperada y no representa un defecto ni una tarea pendiente.
+Este repo no es una aplicacion de producto. Aqui se mantienen los roles, skills,
+protocolo, plantillas, diagramas y validadores que despues se copian a un proyecto
+receptor. El PRD real, la arquitectura, los tickets, contratos, credenciales,
+entornos y despliegues pertenecen al proyecto receptor.
+
+## Que incluye
+
+- Ocho agentes bajo `.agents/agents/<nombre>/agent.md`.
+- Una skill propia por agente bajo `.agents/skills/<nombre>/SKILL.md`.
+- Protocolo operativo con gates humanos, handoffs, QA y recuperacion.
+- Plantillas para PRD, sprint, setup, handoff, candidata y reporte de QA.
+- Scripts locales para validar la plantilla, inicializar receptores, revisar
+  evidencias y simular el recorrido.
+- Diagramas Excalidraw/Excalidash para analizar el flujo y el sistema visual.
+- Guia para trabajar con agy y Codex en paralelo.
+
+El stack de referencia contempla Plane, Astro, React, Next.js, Node.js, NestJS,
+Figma/Pencil, Supabase y n8n segun lo decida cada proyecto. Mencionarlos aqui
+no significa que esten instalados ni conectados.
 
 ## Estructura
 
@@ -23,19 +39,25 @@ docs/protocolo.md
 docs/agy-codex.md
 docs/skills.md
 docs/stack.md
+docs/herramientas-locales.md
+docs/demo-flujo.html
 docs/diagrams/
   agyflow-super-mvp.excalidraw
+  agyflow-flujo-completo.excalidraw
 templates/
   PRD.md
   sprint_actual.md
   bug_report.md
   entrega.md
   project_setup.md
+  handoff.json
+  candidate.json
 scripts/
   validate_squad.py
   handoff.py
   setup_receiver.py
   pipeline.py
+  demo_workflow.py
 tests/
   test_validate_squad.py
   test_handoff.py
@@ -45,89 +67,87 @@ tests/
 .github/workflows/validate-squad.yml
 ```
 
-`architecture.md` pertenece al proyecto receptor y lo aporta el humano.
-No se genera ni modifica automáticamente. Las plantillas no contienen
-decisiones de negocio, contratos de API ni aprobaciones reales.
+`architecture.md` no vive en esta plantilla. Lo aporta el humano en cada proyecto
+receptor. `setup_receiver.py` solo crea `architecture.proposed.md` para revision.
 
-## Mantener esta plantilla
+## Validar
 
-Revisá instrucciones, roles, documentación y ejemplos. Comprobá el paquete con:
+Para comprobar que la plantilla sigue consistente:
 
 ```bash
 python3 scripts/validate_squad.py
-python3 -m unittest discover -s tests -v
+python3 -m unittest discover -s tests -q
 ```
 
-El mantenimiento de agyFlow no requiere un sprint en Plane, contratos de una
-aplicación ni activar las fases de producto. Conservá los formatos genéricos en
-`templates/`; no guardes aquí datos o credenciales de un proyecto receptor.
+Para ver el flujo con datos simulados:
+
+```bash
+python3 scripts/demo_workflow.py
+```
+
+Tambien podes abrir `docs/demo-flujo.html` en el navegador. La demo ejecuta los
+controles locales, pero sus aprobaciones, referencias de diseno, QA y despliegues
+son simulados.
 
 ## Usar la plantilla en otro proyecto
- 
-1. Podés inicializar automáticamente el proyecto receptor con:
+
+1. Revisá primero la vista previa y después inicializá el proyecto receptor:
+
    ```bash
+   python3 scripts/setup_receiver.py --target /ruta/al/proyecto --frontend hybrid --backend nestjs --db supabase --dry-run
    python3 scripts/setup_receiver.py --target /ruta/al/proyecto --frontend hybrid --backend nestjs --db supabase
    ```
-   O copiar manualmente `AGENTS.md`, `.agents/`, `config/`, `docs/`, `templates/`, `scripts/` y `tests/`
-   al proyecto receptor, integrando cambios sin pisar archivos existentes.
-   Integrá también las exclusiones de `.gitignore` antes de añadir credenciales.
-   Revisá con el humano el stack y las rutas que asumen los roles antes de usarlos.
-   Copiar la plantilla no redefine la arquitectura de una aplicación existente.
+
+   Se genera `architecture.proposed.md` para revisión humana; no se escribe
+   `architecture.md` ni se inventan contratos. Los conflictos se conservan por
+   defecto. `--force` actualiza archivos del paquete con respaldo por archivo,
+   sin borrar directorios ni sustituir documentos de producto existentes.
+
 2. Ejecutá `python3 scripts/validate_squad.py` para validar el paquete local.
-3. Consultá `agy --help` y ejecutá `agy agents` desde la raíz. Confirmá que se
-   descubran los ocho nombres del índice antes de invocar un rol.
-   Si no se descubren, pedí en la sesión que lea el `agent.md` del rol y su skill:
-   es una lectura explícita de instrucciones, no un registro nativo comprobado.
-4. Consultá `agy mcp add --help` y `agy mcp list --help`. Configurá únicamente los
-   servidores necesarios con los comandos, credenciales y versiones verificados
-   para tu entorno. Usá `agy mcp list` para comprobar su registro; el registro
-   por sí solo no prueba conexión ni acceso. Verificá una operación de lectura.
-5. Revisá `docs/protocolo.md`, aportá la arquitectura y un brief, e invocá el rol
-   correspondiente: por ejemplo, `agy --agent po-agent`. El PO crea el PRD;
-   el humano lo valida antes de activar Scrum Master.
-6. En el proyecto receptor, antes del trabajo que consume contratos, ejecutá
-   `python3 scripts/validate_squad.py --project`. Los archivos requeridos por esa
-   fase deben existir; no los reemplaces por documentos vacíos para superar el check.
-   Backend puede definir los primeros contratos con arquitectura y tickets suficientes.
+
+3. Confirmá los agentes en el cliente local:
+
+   ```bash
+   agy --help
+   agy agents
+   ```
+
+   Si el runtime no muestra los agentes, pedí a la sesion que lea explicitamente
+   `AGENTS.md`, el `agent.md` del rol y su skill. Eso permite operar con las
+   instrucciones aunque el descubrimiento nativo no este acreditado.
+
+4. Configurá solo los MCP necesarios:
+
+   ```bash
+   agy mcp add --help
+   agy mcp list --help
+   ```
+
+   El ejemplo `.agents/mcp_config.example.json` no contiene credenciales ni es
+   una instalacion activa. Despues de registrar un MCP, comproba una lectura real.
+
+5. Aporta `architecture.md`, brief inicial y herramientas verificadas. Luego
+   activa el primer rol, por ejemplo:
+
+   ```bash
+   agy --agent po-agent
+   ```
+
+   El PO refina el PRD. Scrum Master no se activa hasta que el humano apruebe
+   el contenido exacto del PRD.
+
+6. En el receptor, usa `python3 scripts/validate_squad.py --project` antes de
+   fases tecnicas. Este modo espera documentos y contratos del proyecto real; no
+   se deben crear archivos vacios solo para pasar el check.
+
 7. Registrá herramientas comprobadas, skills seleccionadas y responsables usando
    `templates/project_setup.md`. Comprobá cada cliente por separado. Las skills
    propias se incluyen; los complementos no se descargan durante la validación.
 
-La ayuda del CLI local comprobada durante esta revisión incluye `agents`,
-`mcp` y `--agent`; no lista `inspect`. La sintaxis y el descubrimiento de agentes
-deben verificarse en cada instalación. Este paquete no acredita que el runtime
-acepte su frontmatter hasta comprobar los agentes cargados.
+## Flujo
 
-## MCP y skills
-
-Para usar agy y la extensión de Codex juntos, seguí [la guía de trabajo
-compartido](docs/agy-codex.md). Incluye instrucciones para pasar tareas entre
-sesiones y empezar con una sesión implementando y otra revisando.
-
-`.agents/mcp_config.example.json` es una referencia de configuración, no un
-archivo activo. Conserva ejemplos de Plane, n8n y Playwright con valores pendientes.
-El esquema y los comandos de esos servidores requieren validación antes de uso.
-DevOps Helper se omite porque no había un comando de arranque comprobado.
-
-El mecanismo confirmado por la ayuda local para registrar servidores es
-`agy mcp add`; no se presupone que el CLI cargue automáticamente esta plantilla
-ni dónde guarda su configuración. No introduzcas secretos en el ejemplo.
-`.gitignore` excluye `.agents/mcp_config.json` y archivos `.env` locales.
-
-La asignación completa está en [docs/skills.md](docs/skills.md) y
-`config/skills.json`: ocho procedimientos incluidos y complementos externos
-condicionados a la tarea y versión del proyecto. Las referencias a Astro, React,
-Next.js, NestJS, Impeccable, Figma/Pencil, Supabase, `webapp-testing` y n8n no son
-una instalación activa. Leé las instrucciones seleccionadas antes de usar comandos.
-`inheritMcp: true` no demuestra aislamiento entre servidores; verificá los
-permisos del entorno. No se instalan herramientas ni se conectan cuentas como
-parte de la validación local.
-
-## Flujo y recuperación
-
-El [mapa visual del SUPER MVP](docs/diagrams/README.md) reúne en un único lienzo
-editable de Excalidraw el flujo, la operación de tareas, la estructura de la
-plantilla y una propuesta de sistema de diseño. Incluye vistas previas SVG y PNG.
+El recorrido operativo esta documentado en `docs/protocolo.md` y representado en
+`docs/diagrams/`. La version corta es:
 
 ```text
 Brief → PO → aprobación humana del PRD → Scrum Master
@@ -142,33 +162,84 @@ QA rechazado → responsable de estado registra una reapertura sin duplicarla
 Tres rechazos consecutivos → escalado humano
 ```
 
-El detalle de entradas, responsables, estados, reintentos y evidencias está en
-`docs/protocolo.md`. Plane es la fuente de verdad. El humano elige Scrum en modo
-manual o Automation como responsable único de espejo, estados y reaperturas.
-QA siempre entrega su dictamen: aprobado termina la secuencia de reaperturas,
-rechazado cuenta una sola por ejecución y bloqueado registra el impedimento.
-n8n no es requisito para la operación manual. Cada fase requiere activación explícita.
+Las fases se activan explicitamente. Plane es la fuente de verdad del estado. El
+humano elige un unico responsable de estado operativo: Scrum Master en modo manual
+o Automation si existe una automatizacion verificada. n8n es opcional.
 
-## Alcance de la validación
+## Herramientas locales
+
+`scripts/handoff.py` valida snapshots JSON de evidencia entre roles. Ya no intenta
+deducir aprobaciones leyendo texto libre.
+
+```bash
+python3 scripts/handoff.py check --role frontend-dev-agent --input handoff.json
+```
+
+`scripts/pipeline.py` diagnostica la siguiente fase segun PRD, aprobacion local,
+arquitectura y evidencia disponible. `advance` propone la siguiente accion; no
+registra aprobaciones ni ejecuta agentes.
+
+```bash
+python3 scripts/pipeline.py --root /ruta/al/proyecto check-prd
+python3 scripts/pipeline.py --root /ruta/al/proyecto status
+python3 scripts/pipeline.py --root /ruta/al/proyecto advance
+```
+
+La guia completa esta en `docs/herramientas-locales.md`.
+
+## Agy + Codex
+
+Para usar agy en Antigravity y Codex en paralelo, segui `docs/agy-codex.md`.
+La idea recomendada es simple: una sesion implementa una tarea concreta y la otra
+revisa protocolo, arquitectura, seguridad, QA o handoff. Ambas deben leer las
+mismas fuentes del proyecto y respetar el mismo responsable por archivo.
+
+## Skills
+
+La asignacion completa esta en `docs/skills.md` y `config/skills.json`. Las skills
+incluidas son:
+
+| Agente | Skill incluida |
+|---|---|
+| `po-agent` | `agy-requirements` |
+| `scrum-master-agent` | `agy-planning` |
+| `designer-agent` | `agy-design-handoff` |
+| `frontend-dev-agent` | `agy-frontend-delivery` |
+| `backend-dev-agent` | `agy-backend-contracts` |
+| `qa-agent` | `agy-qa-evidence` |
+| `devops-agent` | `agy-build-release` |
+| `automation-agent` | `agy-sync-state` |
+
+La skill `agy-security-audit` queda disponible para revisiones de seguridad de QA
+y Backend. Las skills externas dependen del proyecto y de las herramientas
+instaladas en ese entorno.
+
+## Diagramas
+
+`docs/diagrams/agyflow-flujo-completo.excalidraw` muestra la operacion completa
+en seis marcos: filosofia, squad, handoff, reglas operativas, CLI y uso practico.
+`docs/diagrams/agyflow-super-mvp.excalidraw` sirve para discutir el flujo, la
+estructura y el sistema de diseno. Ambos pueden importarse en Excalidraw o
+Excalidash; las vistas SVG/PNG son solo previsualizaciones.
+
+## Limites
 
 El validador comprueba estructura, nombres, frontmatter básico, formato de la
 plantilla MCP, documentación y asignaciones de skills con rutas portables.
-Este es el modo de validación de agyFlow.
-`--project` es una comprobación adicional para el proyecto receptor: agrega
-presencia y contenido mínimo de documentos del proyecto y contratos TypeScript.
-No debe usarse como criterio de aceptación de la plantilla. Si adaptás el stack
-o las rutas en el destino, adaptá también esa comprobación a su arquitectura.
-No valida semántica del runtime, conectividad, aprobación humana, calidad de
-contratos ni que una aplicación pase sus pruebas. El protocolo es una regla
-operativa; la sincronización y el contador deben implementarse y probarse en los
-workflows reales antes de habilitar automatización.
+`--project` agrega presencia y contenido minimo de documentos del receptor. No
+valida semantica del runtime, conectividad, aprobaciones humanas, calidad de
+contratos ni que una aplicacion pase sus pruebas.
 
-## Resultado de la revisión local
+`handoff.py` y `pipeline.py` comprueban consistencia local de evidencias. No
+autentican personas, no consultan Plane, no ejecutan QA real y no despliegan.
+
+## Estado actual
 
 - La validación del paquete pasa con los ocho agentes en las rutas documentadas.
-- Las ocho skills incluidas pasan la validación de estructura. Las 28 pruebas
-  locales cubren asignaciones rotas, archivos ausentes, JSON inválido, rutas no
-  portables, handoffs entre agentes, scaffolding guiado, validación de Gherkin y pipeline interactivo.
+- La suite local cubre asignaciones rotas, archivos ausentes, JSON inválido, rutas
+  no portables, evidencia de handoff, conservación de archivos al adoptar la
+  plantilla, estructura de escenarios y diagnóstico del pipeline. Incluye casos
+  de QA rechazado o antiguo y cambios de PRD tras una aprobación registrada.
 - Se comprobó que `--project` detecta la ausencia de `architecture.md`, `PRD.md`,
   `sprint_actual.md` y contratos TypeScript en `packages/contracts/src`.
   Es una comprobación del destino; esos archivos no se requieren en esta plantilla.
