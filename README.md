@@ -100,37 +100,14 @@ Tambien podes abrir `docs/demo-flujo.html` en el navegador. La demo ejecuta los
 controles locales, pero sus aprobaciones, referencias de diseno, QA y despliegues
 son simulados.
 
-## Inicializar un proyecto receptor
-
-La forma más directa de usar agyFlow en un proyecto nuevo es con
-[`degit`](https://github.com/Rich-Harris/degit). No requiere publicar nada
-ni copiar archivos a mano.
+## Instalación
 
 ```bash
-# Scaffoldear agyFlow en una carpeta nueva
 npx degit arcavcwb/agyFlow mi-proyecto
 cd mi-proyecto
-
-# Verificar que la estructura llegó correcta
-python3 scripts/validate_squad.py
+git init && git add . && git commit -m "chore: scaffold agyFlow"
+agy --agent po-agent
 ```
-
-`degit` copia solo los archivos del proyecto (sin historial git ni los
-archivos internos declarados en `.degitignore`). El resultado es idéntico
-al de `setup_receiver.py` pero en un solo comando.
-
-Después de correr `degit`:
-
-1. Inicializá el repositorio Git del nuevo proyecto:
-   ```bash
-   git init && git add . && git commit -m "chore: scaffold agyFlow"
-   ```
-2. Aportá `architecture.md` con las decisiones de stack y rutas del proyecto.
-3. Configurá los MCP necesarios (`agy mcp add`) y verificá cada uno.
-4. Activá el primer agente:
-   ```bash
-   agy --agent po-agent
-   ```
 
 ## Usar la plantilla en otro proyecto
 
