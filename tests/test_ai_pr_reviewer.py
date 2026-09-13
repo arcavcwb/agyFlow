@@ -156,6 +156,19 @@ class AIPRReviewerValidationTests(unittest.TestCase):
         ))
         self.assertTrue(any("esquema de respuesta" in e for e in self.check()))
 
+    def test_reviewer_must_exclude_editable_diagrams(self):
+        path = self.root / "tools/ai-pr-reviewer/review_agent.py"
+        path.write_text(path.read_text().replace(r'r".*\.excalidraw|"', ''))
+        self.assertTrue(any("diagramas editables" in e for e in self.check()))
+
+    def test_workflow_must_block_partial_review(self):
+        path = self.root / ".github/workflows/ai-pr-review.yml"
+        path.write_text(path.read_text().replace(
+            "steps.review.outputs.exit_code == '3'",
+            "steps.review.outputs.exit_code == '0'",
+        ))
+        self.assertTrue(any("revisión parcial" in e for e in self.check()))
+
     # --- Incomplete policy ---
 
     def test_policy_missing_sections_rejected(self):
@@ -201,6 +214,17 @@ class ReviewAgentTests(unittest.TestCase):
         self.assertNotIn("abcdefghijklmnopqrstuvwxyz123456", redacted)
         self.assertNotIn("+secret", redacted)
         self.assertIn("REDACTED_POTENTIAL_SECRET", redacted)
+
+    def test_context_budget_and_diagram_filter(self):
+        self.assertEqual(reviewer.MAX_DIFF_CHARS_DEFAULT, 50_000)
+        raw = (
+            "diff --git a/docs/diagrams/map.excalidraw "
+            "b/docs/diagrams/map.excalidraw\n+diagram data\n"
+            "diff --git a/src/app.py b/src/app.py\n+print('kept')\n"
+        )
+        filtered = reviewer.filter_diff(raw)
+        self.assertNotIn("diagram data", filtered)
+        self.assertIn("print('kept')", filtered)
 
     def test_normalize_recomputes_verdict_from_findings(self):
         value = {
@@ -265,6 +289,37 @@ class ReviewAgentTests(unittest.TestCase):
         self.assertIn("response_json_schema", captured["config"])
         self.assertNotIn("Sos un reviewer", captured["contents"])
         self.assertIn("pull_request_diff", captured["contents"])
+
+    def test_main_marks_truncated_clean_review_as_partial(self):
+        class Models:
+            def generate_content(self, **kwargs):
+                return SimpleNamespace(text=json.dumps({"findings": []}))
+
+        fake_genai = SimpleNamespace(
+            Client=lambda api_key: SimpleNamespace(models=Models())
+        )
+        fake_google = ModuleType("google")
+        fake_google.genai = fake_genai
+
+        with tempfile.TemporaryDirectory(prefix="review-agent-partial-") as temp:
+            diff_path = Path(temp) / "change.diff"
+            output_path = Path(temp) / "report.md"
+            diff_path.write_text(
+                "diff --git a/app.py b/app.py\n+" + "x" * 200 + "\n"
+            )
+            argv = [
+                "review_agent.py", "--diff", str(diff_path),
+                "--output", str(output_path), "--max-diff-chars", "50",
+            ]
+            with mock.patch.dict(
+                sys.modules, {"google": fake_google, "google.genai": fake_genai}
+            ), mock.patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}), \
+                    mock.patch.object(sys, "argv", argv):
+                exit_code = reviewer.main()
+            report = output_path.read_text()
+
+        self.assertEqual(exit_code, 3)
+        self.assertIn("diff fue truncado", report)
 
 
 if __name__ == "__main__":

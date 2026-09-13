@@ -25,7 +25,7 @@ python3 tools/ai-pr-reviewer/review_agent.py --diff /tmp/pr.diff
 | `--output` | stdout | Reporte markdown |
 | `--json-output` | (ninguno) | Respuesta JSON raw para debugging |
 | `--model` | `gemini-3.6-flash` | Modelo a usar (o env `GEMINI_MODEL`) |
-| `--max-diff-chars` | 100000 | Truncar diff si excede este tamaño |
+| `--max-diff-chars` | 50000 | Presupuesto máximo antes de marcar revisión parcial |
 
 ## Exit codes
 
@@ -34,6 +34,7 @@ python3 tools/ai-pr-reviewer/review_agent.py --diff /tmp/pr.diff
 | 0 | Clean o needs_review — sin hallazgos críticos |
 | 1 | Error — key faltante, API falló, respuesta inválida |
 | 2 | Blocked — al menos un hallazgo crítico |
+| 3 | Partial — el diff excedió el presupuesto de contexto |
 
 ## Uso en CI
 
@@ -43,9 +44,9 @@ Ver `docs/ai-pr-reviewer.md` y `.github/workflows/ai-pr-review.yml`.
 
 - Solo lectura. No modifica archivos ni aprueba nada.
 - No sustituye QA, aprobación humana ni despliegue.
-- Lockfiles, binarios y archivos minificados se excluyen del diff.
+- Lockfiles, diagramas editables, binarios y archivos minificados se excluyen del diff.
 - Formas comunes de credenciales se ocultan antes del envío.
-- Diffs largos se truncan; la revisión cubre solo la porción visible.
+- Diffs largos se truncan y devuelven estado parcial; no generan un gate verde.
 - El código visible del diff se procesa externamente mediante la API de Gemini;
   revisá la política del proyecto antes de habilitar el módulo.
 - Ver `policy.md` para las reglas completas.

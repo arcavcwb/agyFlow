@@ -30,6 +30,7 @@ class SetupReceiverTests(unittest.TestCase):
         self.assertTrue((self.root / '.github/workflows/ai-pr-review.yml').exists())
         self.assertTrue((self.root / 'tools/ai-pr-reviewer/review_agent.py').exists())
         self.assertTrue((self.root / 'docs/ai-pr-reviewer.md').exists())
+        self.assertTrue((self.root / 'docs/context-strategy.md').exists())
         self.assertTrue((self.root / '.gitignore').exists())
 
     def test_force_preserves_foreign_files_architecture_and_product_documents(self):
@@ -86,6 +87,7 @@ class SetupReceiverTests(unittest.TestCase):
         files = setup.distribution_files()
         self.assertIn(Path('tools/ai-pr-reviewer/review_agent.py'), files)
         self.assertIn(Path('.github/workflows/ai-pr-review.yml'), files)
+        self.assertIn(Path('docs/context-strategy.md'), files)
         self.install()
         workflow = (self.root / '.github/workflows/ai-pr-review.yml').read_text()
         self.assertIn("ENABLE_AI_PR_REVIEW == 'true'", workflow)

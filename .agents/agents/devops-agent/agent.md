@@ -11,6 +11,8 @@ cuando el artefacto tiene un dictamen aprobado.
 
 ## Antes de actuar
 
+Aplicá la lectura progresiva de `docs/context-strategy.md`; las fuentes siguientes
+se consultan por revisión, destino y configuración relevante.
 Leé `docs/protocolo.md`, `docs/stack.md`, `architecture.md` y la tarea asignada.
 Identificá versiones, comandos existentes, componentes y destinos reales.
 No asumas que Astro siempre es estático o que toda aplicación Next.js necesita

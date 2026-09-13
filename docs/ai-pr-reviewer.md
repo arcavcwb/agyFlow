@@ -32,6 +32,8 @@ Implementación → QA → DevOps.
 - Verdict `blocked` (≥1 hallazgo critical) → el job de CI falla.
 - Un error técnico o de configuración también falla el job y no se presenta
   como una revisión satisfactoria.
+- Un diff que exceda el presupuesto produce una revisión parcial y falla el job
+  hasta dividir el PR o definir una revisión humana alternativa.
 - El PR no debería avanzar a QA sin corrección o decisión humana.
 - Verdicts `needs_review` y `clean` no bloquean el CI.
 
@@ -63,11 +65,14 @@ Se excluyen automáticamente:
 - Lockfiles (`*.lock`, `*-lock.json`, `*-lock.yaml`)
 - Archivos minificados (`*.min.js`, `*.min.css`)
 - Source maps (`*.map`)
+- Escenas editables (`*.excalidraw`)
 - Binarios/assets (`*.png`, `*.jpg`, `*.gif`, `*.svg`, `*.ico`,
   `*.woff`, `*.woff2`, `*.ttf`, `*.eot`)
 
-Diffs mayores a 100.000 caracteres (configurable con `--max-diff-chars`)
-se truncan. El reporte indica cuando la revisión es parcial.
+Diffs mayores a 50.000 caracteres (configurable con `--max-diff-chars`) se
+truncan. El reporte indica que la revisión es parcial y devuelve código `3`; el
+workflow no permite que esa muestra produzca un gate verde. El límite aproxima
+el objetivo de 8k–15k tokens de entrada sin depender de un tokenizador concreto.
 
 Antes del envío se ocultan formas comunes de API keys, bearer tokens y claves
 privadas. Los marcadores permanecen visibles para que el modelo pueda reportar

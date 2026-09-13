@@ -54,7 +54,8 @@ def distribution_files():
         result.extend(p.relative_to(TEMPLATE_ROOT)
                       for p in TEMPLATE_ROOT.glob(pattern) if p.is_file())
     for name in ('protocolo.md', 'agy-codex.md', 'stack.md', 'skills.md',
-                 'herramientas-locales.md', 'ai-pr-reviewer.md'):
+                 'herramientas-locales.md', 'ai-pr-reviewer.md',
+                 'context-strategy.md'):
         if (TEMPLATE_ROOT / 'docs' / name).is_file():
             result.append(Path('docs') / name)
     if (TEMPLATE_ROOT / 'docs/demo-flujo.html').is_file():

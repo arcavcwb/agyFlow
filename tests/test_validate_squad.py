@@ -65,6 +65,51 @@ class PackageValidationTests(unittest.TestCase):
         path.write_text(path.read_text().replace("templates/entrega.md", "templates/unassigned.md"))
         self.assertTrue(self.check())
 
+    def test_context_strategy_is_required_and_referenced(self):
+        (self.root / "docs/context-strategy.md").unlink()
+        self.assertTrue(any("context-strategy.md" in e for e in self.check()))
+
+    def test_readme_and_index_must_reference_context_strategy(self):
+        for name in ("README.md", "AGENTS.md"):
+            with self.subTest(name=name):
+                path = self.root / name
+                original = path.read_text()
+                path.write_text(original.replace(
+                    "docs/context-strategy.md", "docs/missing-context.md"
+                ))
+                self.assertTrue(any(
+                    name in e and "estrategia de contexto" in e
+                    for e in self.check()
+                ))
+                path.write_text(original)
+
+    def test_every_agent_applies_context_strategy(self):
+        path = self.root / ".agents/agents/qa-agent/agent.md"
+        path.write_text(path.read_text().replace(
+            "docs/context-strategy.md", "docs/other.md"
+        ))
+        self.assertTrue(any(
+            "qa-agent/agent.md" in e and "estrategia de contexto" in e
+            for e in self.check()
+        ))
+
+    def test_diagrams_are_declared_non_operational(self):
+        path = self.root / "docs/diagrams/README.md"
+        path.write_text(path.read_text().replace(
+            "material humano", "material requerido"
+        ))
+        self.assertTrue(any("material humano" in e for e in self.check()))
+
+    def test_agents_cannot_require_binary_diagrams(self):
+        path = self.root / ".agents/agents/designer-agent/agent.md"
+        path.write_text(
+            path.read_text()
+            + "\nLeé docs/diagrams/agyflow-super-mvp.excalidraw siempre.\n"
+        )
+        self.assertTrue(any(
+            "diagrama binario" in e for e in self.check()
+        ))
+
     def test_unknown_or_duplicate_optional_is_rejected(self):
         for optional in (["unknown"], ["webapp-testing", "webapp-testing"], [None]):
             with self.subTest(optional=optional):

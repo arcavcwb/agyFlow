@@ -22,6 +22,19 @@ sesión actual. Si un tipo, contrato o parámetro no está explícitamente defin
 inventes. Queda prohibido asumir contratos de API o estructuras de datos no
 verificadas.
 
+## Contexto y presupuesto de tokens
+
+Aplicá `docs/context-strategy.md`: empezá por este índice, el `agent.md` del rol,
+su skill principal y el encargo. Después leé solo las secciones del ticket, PRD,
+arquitectura, protocolo, stack y código que afecten la tarea, ampliando por una
+dependencia o riesgo concreto. Los objetivos de tokens nunca permiten omitir
+evidencia obligatoria ni asumir datos faltantes.
+
+No leas `docs/diagrams/*.excalidraw`, `docs/diagrams/*.svg` ni
+`docs/diagrams/*.png` salvo que la tarea sea crear, modificar o verificar esos
+diagramas. Son material humano de análisis y no una fuente operativa ni una
+fuente de verdad. Esta regla no excluye assets visuales del producto.
+
 ## Agentes del squad
 
 Cada uno vive en `.agents/agents/<nombre>/agent.md` y se invoca con
@@ -51,7 +64,9 @@ protocolo de handoff (abajo) sigue siendo gatillado explícitamente.
 - **Estado del sprint:** `sprint_actual.md`
 - **Requerimientos vigentes:** `PRD.md`
 - **Reportes de QA:** `bug_report.md`
-- **Coordinación y entregas:** `docs/protocolo.md` — leer antes de ejecutar una fase.
+- **Coordinación y entregas:** `docs/protocolo.md` — consultar las secciones de la fase.
+- **Contexto y tokens:** `docs/context-strategy.md` — lectura progresiva, paquetes
+  por rol, diagramas y revisión por diff.
 - **Trabajo con agy y Codex:** `docs/agy-codex.md` — leer si ambas sesiones participan.
 - **Asignación de skills:** `config/skills.json` y `docs/skills.md`.
 - **Stack de referencia:** `docs/stack.md` — versiones y rutas las define el proyecto receptor.

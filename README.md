@@ -22,6 +22,7 @@ entornos y despliegues pertenecen al proyecto receptor.
 - Diagramas Excalidraw/Excalidash para analizar el flujo y el sistema visual.
 - Guia para trabajar con agy y Codex en paralelo.
 - Reviewer opcional de pull requests con Gemini, deshabilitado por defecto.
+- Estrategia de contexto para reducir tokens mediante lectura progresiva.
 
 El stack de referencia contempla Plane, Astro, React, Next.js, Node.js, NestJS,
 Figma/Pencil, Supabase y n8n segun lo decida cada proyecto. Mencionarlos aqui
@@ -42,6 +43,7 @@ docs/skills.md
 docs/stack.md
 docs/herramientas-locales.md
 docs/ai-pr-reviewer.md
+docs/context-strategy.md
 docs/demo-flujo.html
 docs/diagrams/
   agyflow-super-mvp.excalidraw
@@ -232,6 +234,18 @@ es evidencia auxiliar: no aprueba QA ni reemplaza la revisión humana.
 El diff se procesa mediante un proveedor externo. Antes de habilitarlo, revisá
 las reglas de privacidad del proyecto. La configuración, limitaciones y política
 completas están en `docs/ai-pr-reviewer.md`.
+
+## Contexto y consumo de tokens
+
+`docs/context-strategy.md` define paquetes mínimos por rol, lectura progresiva,
+objetivos orientativos y handoffs compactos. Los agentes parten del índice, su
+rol, skill y tarea; luego abren únicamente criterios, secciones y dependencias
+relevantes. Los diagramas Excalidraw, SVG y PNG quedan fuera del contexto
+operativo salvo cuando la tarea consiste en crearlos o verificarlos.
+
+El AI PR Reviewer sigue la misma política: analiza el diff filtrado con un máximo
+predeterminado de 50.000 caracteres. Una revisión truncada se marca como parcial
+y no produce un gate verde.
 
 ## Diagramas
 

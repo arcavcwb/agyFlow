@@ -2,6 +2,12 @@
 
 Lienzos editables vectoriales compatibles con **Excalidash** y **Excalidraw**.
 
+Estos diagramas son material humano de análisis. Los agentes no leen archivos
+`.excalidraw`, SVG o PNG como contexto operativo salvo que la tarea sea crear,
+modificar o verificar diagramas. No son fuente de verdad: las decisiones
+aprobadas deben quedar en el PRD, `architecture.md`, `docs/protocolo.md` o el
+documento de diseño correspondiente. Ver `docs/context-strategy.md`.
+
 ## 1. Diagrama Integral de los 6 Puntos Operativos
 Cubre de forma exhaustiva las 6 dimensiones del framework agéntico:
 - [Abrir archivo editable Excalidraw / Excalidash](agyflow-flujo-completo.excalidraw)

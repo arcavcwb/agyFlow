@@ -29,6 +29,8 @@ class HandoffTests(unittest.TestCase):
         self.assertIn("apps/web/src/features/auth", prompt)
         self.assertIn("backend-dev-agent", prompt)
         self.assertIn("templates/entrega.md", prompt)
+        self.assertIn("docs/context-strategy.md", prompt)
+        self.assertIn("solo las secciones relevantes", prompt)
 
     def test_build_prompt_unknown_role_raises(self):
         with self.assertRaises(ValueError):

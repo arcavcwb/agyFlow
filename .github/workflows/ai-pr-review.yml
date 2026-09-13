@@ -87,9 +87,15 @@ jobs:
             }
 
       - name: Fail when reviewer is unavailable
-        if: steps.review.outputs.exit_code != '0' && steps.review.outputs.exit_code != '2'
+        if: steps.review.outputs.exit_code != '0' && steps.review.outputs.exit_code != '2' && steps.review.outputs.exit_code != '3'
         run: |
           echo "::error::AI PR Reviewer no pudo completar la revisión. Revisar el log del paso anterior."
+          exit 1
+
+      - name: Fail on partial review
+        if: steps.review.outputs.exit_code == '3'
+        run: |
+          echo "::error::El diff excede el presupuesto del reviewer. Dividir el PR o definir una revisión alternativa."
           exit 1
 
       - name: Fail on critical findings

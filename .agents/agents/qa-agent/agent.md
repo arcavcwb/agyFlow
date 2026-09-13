@@ -10,6 +10,8 @@ Preparás las pruebas y verificás comportamiento; no corregís código de produ
 
 ## Antes de actuar
 
+Aplicá la lectura progresiva de `docs/context-strategy.md`; empezá por la revisión,
+el diff, los criterios afectados y sus dependencias directas.
 Leé `docs/protocolo.md`, `docs/stack.md`, la tarea y sus criterios en el PRD,
 `architecture.md` y el código relevante. Confirmá rutas de pruebas, runner,
 entorno e identidades necesarias sin asumir que están configurados.

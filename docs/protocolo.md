@@ -53,6 +53,11 @@ Los agentes de implementación no editan el estado del sprint directamente.
 Usá `templates/entrega.md` como formato de traspaso en la respuesta. No exige
 crear otro archivo ni ampliar los permisos de escritura del rol.
 
+Aplicá `docs/context-strategy.md`: el handoff referencia fuentes y revisiones en
+lugar de copiar su contenido. El receptor abre el ticket, criterio, contrato,
+archivo o evidencia que necesite y amplía contexto solo ante una dependencia o
+riesgo concreto. No se transfieren transcripciones completas entre sesiones.
+
 Un contrato cambiado invalida la señal de listo de los consumidores afectados:
 Backend identifica el cambio, el coordinador registra el bloqueo y Frontend
 revalida antes de integrar. Se asigna un único escritor por archivo durante

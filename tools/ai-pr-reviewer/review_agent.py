@@ -5,6 +5,7 @@ Exit codes:
   0 — clean or needs_review (no critical findings)
   1 — error (missing key, API failure, invalid response)
   2 — blocked (at least one critical finding)
+  3 — partial (diff exceeded the context budget)
 """
 import argparse
 from collections import Counter
@@ -23,6 +24,7 @@ EXCLUDE_PATTERNS = re.compile(
     r".*-lock\.yaml|"
     r".*\.min\.(js|css)|"
     r".*\.map|"
+    r".*\.excalidraw|"
     r".*\.svg|"
     r".*\.png|"
     r".*\.jpg|"
@@ -35,7 +37,7 @@ EXCLUDE_PATTERNS = re.compile(
     re.MULTILINE,
 )
 
-MAX_DIFF_CHARS_DEFAULT = 100_000
+MAX_DIFF_CHARS_DEFAULT = 50_000
 MAX_FINDINGS = 25
 DEFAULT_MODEL = "gemini-3.6-flash"
 SEVERITIES = ("critical", "high", "medium", "low", "info")
@@ -359,6 +361,8 @@ def main() -> int:
     verdict = result.get("summary", {}).get("verdict", "")
     if verdict == "blocked":
         return 2
+    if was_truncated:
+        return 3
 
     return 0
 

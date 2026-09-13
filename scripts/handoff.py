@@ -53,7 +53,8 @@ def build_prompt(target_role: str, ticket: str, routes: str,
         raise ValueError(f"Rol desconocido: {target_role}. Roles válidos: {', '.join(sorted(AGENTS))}")
 
     lines = [
-        f"Leé AGENTS.md, docs/protocolo.md, docs/agy-codex.md, docs/stack.md y el archivo del rol .agents/agents/{target_role}/agent.md.",
+        f"Leé AGENTS.md, .agents/agents/{target_role}/agent.md y la skill principal indicada por el rol.",
+        "Aplicá docs/context-strategy.md y consultá solo las secciones relevantes de docs/protocolo.md, docs/agy-codex.md y docs/stack.md.",
         f"Tu rol asignado es [{target_role}].",
         f"Ejecutá la tarea de tu rol para [{ticket}] en el alcance asignado: [{routes}].",
         f"Tu etiqueta de sesión es [{session}]. La otra sesión tiene asignado: [{other_session}].",
@@ -67,7 +68,7 @@ def build_prompt(target_role: str, ticket: str, routes: str,
 
     lines.extend([
         "Verificá las entradas de la fase y los contratos existentes antes de editar.",
-        "Al terminar, entregá tu respuesta usando la estructura de templates/entrega.md (revisión, archivos afectados, comprobaciones, bloqueos y pendientes).",
+        "Al terminar, entregá una respuesta compacta usando templates/entrega.md (revisión, archivos afectados, comprobaciones, bloqueos y pendientes), sin copiar documentos ni conversaciones completas.",
         "No actives por tu cuenta la siguiente fase.",
     ])
 

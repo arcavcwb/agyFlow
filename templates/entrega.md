@@ -2,6 +2,8 @@
 
 Este formato se completa en la respuesta del agente; todas las rutas se refieren
 al proyecto receptor. No es un ticket nuevo ni una autorización de la próxima fase.
+Debe ser compacto: referenciá las fuentes y revisiones sin copiar documentos,
+diffs extensos ni conversaciones completas.
 
 - Tarea e historia (o encargo de mantenimiento de plantilla):
 - Rol y etiqueta de sesión:

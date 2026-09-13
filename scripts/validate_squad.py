@@ -201,9 +201,72 @@ def validate_ai_pr_reviewer(root, read, errors):
             errors.append(
                 "tools/ai-pr-reviewer/review_agent.py: usa un modelo retirado"
             )
+        if r"\.excalidraw" not in reviewer:
+            errors.append(
+                "tools/ai-pr-reviewer/review_agent.py: "
+                "debe excluir diagramas editables del contexto"
+            )
+        if "return 3" not in reviewer:
+            errors.append(
+                "tools/ai-pr-reviewer/review_agent.py: "
+                "debe identificar revisiones parciales"
+            )
+    if workflow and "steps.review.outputs.exit_code == '3'" not in workflow:
+        errors.append(
+            ".github/workflows/ai-pr-review.yml: "
+            "debe impedir un gate verde con revisión parcial"
+        )
 
     # 5. Documentation exists
     read("docs/ai-pr-reviewer.md")
+
+
+def validate_context_strategy(root, index, read, errors):
+    """Validate the progressive context policy and diagram boundaries."""
+    strategy = read("docs/context-strategy.md")
+    readme = read("README.md")
+    diagrams = read("docs/diagrams/README.md")
+
+    for relative, content in (
+        ("AGENTS.md", index),
+        ("README.md", readme),
+        ("docs/diagrams/README.md", diagrams),
+    ):
+        if content and "docs/context-strategy.md" not in content:
+            errors.append(f"{relative}: falta referencia a la estrategia de contexto")
+
+    if strategy:
+        for concept in ("lectura progresiva", "Paquetes mínimos por rol",
+                        "Handoffs compactos", "AI PR Reviewer"):
+            if concept.casefold() not in strategy.casefold():
+                errors.append(
+                    f"docs/context-strategy.md: falta sección o concepto '{concept}'"
+                )
+
+    if diagrams:
+        for concept in ("material humano", "no son fuente de verdad"):
+            if concept.casefold() not in diagrams.casefold():
+                errors.append(
+                    "docs/diagrams/README.md: no declara los diagramas "
+                    f"como {concept}"
+                )
+
+    forbidden = re.compile(
+        r"docs/diagrams/[^\s`]*\.(?:excalidraw|svg|png)", re.I
+    )
+    for base in (root / ".agents/agents", root / ".agents/skills"):
+        for path in base.rglob("*.md"):
+            relative = str(path.relative_to(root))
+            content = read(relative)
+            if (base.name == "agents" and path.name == "agent.md" and
+                    "docs/context-strategy.md" not in content):
+                errors.append(
+                    f"{relative}: falta aplicar la estrategia de contexto"
+                )
+            if content and forbidden.search(content):
+                errors.append(
+                    f"{relative}: requiere un diagrama binario como contexto operativo"
+                )
 
 
 def validate(root: Path, project: bool) -> list[str]:
@@ -258,6 +321,7 @@ def validate(root: Path, project: bool) -> list[str]:
             errors.append(f"AGENTS.md: falta {name}")
 
     validate_skills(root, read, errors)
+    validate_context_strategy(root, index, read, errors)
     validate_ai_pr_reviewer(root, read, errors)
 
     relative = ".agents/mcp_config.example.json"

@@ -11,6 +11,8 @@ de producto en los archivos asignados.
 
 ## Antes de actuar
 
+Aplicá la lectura progresiva de `docs/context-strategy.md`; las fuentes siguientes
+se consultan por ticket, sección y dependencia relevante.
 Leé `docs/protocolo.md`, `docs/stack.md`, el sprint y la tarea. Confirmá si sos
 responsable de estado operativo o si se mantiene en Scrum manual. Crear un
 workflow no transfiere esa responsabilidad ni autoriza activarlo.

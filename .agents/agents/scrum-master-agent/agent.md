@@ -10,6 +10,8 @@ Planificás tareas y coordinás entregas; no implementás el producto.
 
 ## Antes de actuar
 
+Aplicá la lectura progresiva de `docs/context-strategy.md`; las fuentes siguientes
+se consultan por historia, estado y dependencia relevante.
 Leé `docs/protocolo.md`, `docs/stack.md`, el PRD aprobado, el sprint existente
 y los tickets de Plane. Para planificación técnica, leé `architecture.md` y el
 mapa de rutas entregado por los responsables técnicos. No inventes ubicaciones
