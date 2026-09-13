@@ -74,10 +74,12 @@ tests/
 .vscode/tasks.json
 .github/workflows/validate-squad.yml
 .github/workflows/ai-pr-review.yml
+.degitignore
 ```
 
 `architecture.md` no vive en esta plantilla. Lo aporta el humano en cada proyecto
-receptor. `setup_receiver.py` solo crea `architecture.proposed.md` para revision.
+receptor. Los archivos excluidos al scaffoldear via `degit` están declarados en
+`.degitignore` (ej: `tests/`, `scripts/setup_receiver.py`).
 
 ## Validar
 
@@ -98,13 +100,46 @@ Tambien podes abrir `docs/demo-flujo.html` en el navegador. La demo ejecuta los
 controles locales, pero sus aprobaciones, referencias de diseno, QA y despliegues
 son simulados.
 
+## Inicializar un proyecto receptor
+
+La forma más directa de usar agyFlow en un proyecto nuevo es con
+[`degit`](https://github.com/Rich-Harris/degit). No requiere publicar nada
+ni copiar archivos a mano.
+
+```bash
+# Scaffoldear agyFlow en una carpeta nueva
+npx degit arcavcwb/agyFlow mi-proyecto
+cd mi-proyecto
+
+# Verificar que la estructura llegó correcta
+python3 scripts/validate_squad.py
+```
+
+`degit` copia solo los archivos del proyecto (sin historial git ni los
+archivos internos declarados en `.degitignore`). El resultado es idéntico
+al de `setup_receiver.py` pero en un solo comando.
+
+Después de correr `degit`:
+
+1. Inicializá el repositorio Git del nuevo proyecto:
+   ```bash
+   git init && git add . && git commit -m "chore: scaffold agyFlow"
+   ```
+2. Aportá `architecture.md` con las decisiones de stack y rutas del proyecto.
+3. Configurá los MCP necesarios (`agy mcp add`) y verificá cada uno.
+4. Activá el primer agente:
+   ```bash
+   agy --agent po-agent
+   ```
+
 ## Usar la plantilla en otro proyecto
 
-1. Revisá primero la vista previa y después inicializá el proyecto receptor:
+El método recomendado es `degit` (ver sección anterior). Si preferís copiar
+la plantilla a un proyecto que ya existe, podés usar `setup_receiver.py`:
 
    ```bash
-   python3 scripts/setup_receiver.py --target /ruta/al/proyecto --frontend hybrid --backend nestjs --db supabase --dry-run
-   python3 scripts/setup_receiver.py --target /ruta/al/proyecto --frontend hybrid --backend nestjs --db supabase
+   python3 /ruta/a/agyFlow/scripts/setup_receiver.py --target /ruta/al/proyecto --frontend hybrid --backend nestjs --db supabase --dry-run
+   python3 /ruta/a/agyFlow/scripts/setup_receiver.py --target /ruta/al/proyecto --frontend hybrid --backend nestjs --db supabase
    ```
 
    Se genera `architecture.proposed.md` para revisión humana; no se escribe
@@ -112,9 +147,15 @@ son simulados.
    defecto. `--force` actualiza archivos del paquete con respaldo por archivo,
    sin borrar directorios ni sustituir documentos de producto existentes.
 
-2. Ejecutá `python3 scripts/validate_squad.py` para validar el paquete local.
+Después de inicializar (por `degit` o por `setup_receiver.py`):
 
-3. Confirmá los agentes en el cliente local:
+1. Validá que la estructura llegó correcta:
+
+   ```bash
+   python3 scripts/validate_squad.py
+   ```
+
+2. Confirmá los agentes en el cliente local:
 
    ```bash
    agy --help
@@ -125,7 +166,7 @@ son simulados.
    `AGENTS.md`, el `agent.md` del rol y su skill. Eso permite operar con las
    instrucciones aunque el descubrimiento nativo no este acreditado.
 
-4. Configurá solo los MCP necesarios:
+3. Configurá solo los MCP necesarios:
 
    ```bash
    agy mcp add --help
@@ -135,8 +176,8 @@ son simulados.
    El ejemplo `.agents/mcp_config.example.json` no contiene credenciales ni es
    una instalacion activa. Despues de registrar un MCP, comproba una lectura real.
 
-5. Aporta `architecture.md`, brief inicial y herramientas verificadas. Luego
-   activa el primer rol, por ejemplo:
+4. Aportá `architecture.md`, brief inicial y herramientas verificadas. Luego
+   activá el primer rol:
 
    ```bash
    agy --agent po-agent
@@ -145,11 +186,11 @@ son simulados.
    El PO refina el PRD. Scrum Master no se activa hasta que el humano apruebe
    el contenido exacto del PRD.
 
-6. En el receptor, usa `python3 scripts/validate_squad.py --project` antes de
-   fases tecnicas. Este modo espera documentos y contratos del proyecto real; no
-   se deben crear archivos vacios solo para pasar el check.
+5. En el receptor, usá `python3 scripts/validate_squad.py --project` antes de
+   fases técnicas. Este modo espera documentos y contratos del proyecto real; no
+   se deben crear archivos vacíos solo para pasar el check.
 
-7. Registrá herramientas comprobadas, skills seleccionadas y responsables usando
+6. Registrá herramientas comprobadas, skills seleccionadas y responsables usando
    `templates/project_setup.md`. Comprobá cada cliente por separado. Las skills
    propias se incluyen; los complementos no se descargan durante la validación.
 

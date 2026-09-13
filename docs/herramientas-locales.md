@@ -25,11 +25,28 @@ antiguas y cambios de alcance. Para regenerar la vista:
 python3 scripts/demo_workflow.py --html docs/demo-flujo.html
 ```
 
-## Inicializar sin perder archivos
+## Inicializar un proyecto receptor
+
+El m\u00e9todo recomendado es `npx degit` desde GitHub:
 
 ```bash
-python3 scripts/setup_receiver.py --target /ruta/al/proyecto --frontend next --backend node --db none --dry-run
-python3 scripts/setup_receiver.py --target /ruta/al/proyecto --frontend next --backend node --db none
+npx degit arcavcwb/agyFlow mi-proyecto
+cd mi-proyecto
+python3 scripts/validate_squad.py
+```
+
+`degit` copia el contenido del repo sin historial git y omitiendo los archivos
+internos declarados en `.degitignore`. Es equivalente a `setup_receiver.py`
+pero en un solo comando y sin depender de Python ni de una copia local de agyFlow.
+
+## Inicializar sin perder archivos (alternativa)
+
+Si el proyecto receptor ya existe y prefer\u00eds fusionar los archivos de agyFlow
+en lugar de scaffoldear desde cero, us\u00e1 `setup_receiver.py`:
+
+```bash
+python3 /ruta/a/agyFlow/scripts/setup_receiver.py --target /ruta/al/proyecto --frontend next --backend node --db none --dry-run
+python3 /ruta/a/agyFlow/scripts/setup_receiver.py --target /ruta/al/proyecto --frontend next --backend node --db none
 ```
 
 Las opciones de stack son preferencias, no instalaciones ni decisiones aprobadas.
