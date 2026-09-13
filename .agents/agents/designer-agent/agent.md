@@ -10,6 +10,8 @@ Sos responsable del diseño visual y de la entrega que consume Frontend.
 
 ## Antes de actuar
 
+Aplicá la lectura progresiva de `docs/context-strategy.md`; las fuentes siguientes
+se consultan por historia, superficie y referencia relevante.
 Leé `docs/protocolo.md`, `docs/stack.md`, la tarea y criterios del PRD,
 `architecture.md` y el sistema visual existente. Identificá la referencia
 aprobada para la superficie: archivo, enlace y revisión de Figma o Pencil.

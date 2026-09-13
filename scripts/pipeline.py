@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
-"""Interactive pipeline runner and Gherkin validator for agyFlow squad."""
-
+"""Diagnose declared workflow evidence; never launch agents or deploy services."""
 import argparse
+from datetime import datetime, timezone
+import hashlib
+import json
 from pathlib import Path
 import re
 import sys
 
-AGENTS_BY_PHASE = {
-    "PO": "po-agent",
-    "SCRUM": "scrum-master-agent",
-    "CONTRACTS": "backend-dev-agent",
-    "DESIGN": "designer-agent",
-    "FRONTEND": "frontend-dev-agent",
-    "QA": "qa-agent",
-    "DEVOPS": "devops-agent",
-}
+# Supports both CLI execution and the repository's importlib-based test runner.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from handoff import AGENTS, check_preconditions, load_evidence, specified
+
 
 GHERKIN_SCENARIOS = [
     ("happy", ["happy path", "camino ideal", "camino feliz", "flujo ideal"]),
@@ -45,127 +42,143 @@ def check_prd_gherkin(prd_path: Path) -> tuple[bool, list[str]]:
         header = block.strip().splitlines()[0]
         block_lower = block.lower()
 
-        # Check Given / When / Then
-        has_given = any(k in block_lower for k in ["dado", "dada", "dados", "dadas", "given"])
-        has_when = any(k in block_lower for k in ["cuando", "when"])
-        has_then = any(k in block_lower for k in ["entonces", "then"])
-
-        if not (has_given and has_when and has_then):
-            errors.append(f"{header}: faltan cláusulas Given/When/Then (Dado/Cuando/Entonces).")
-
-        # Check 4 mandatory scenarios
+        # This is a local structure check, not a complete Gherkin parser.
+        clean = re.sub(r"[*`_]", "", block_lower)
+        scenarios = re.split(r"(?m)^\s*\d+[.)]\s+", clean)[1:]
         for key, aliases in GHERKIN_SCENARIOS:
-            if not any(alias in block_lower for alias in aliases):
-                errors.append(f"{header}: falta escenario obligatorio '{key}' ({', '.join(aliases[:2])}).")
+            matches = [part for part in scenarios if any(alias in part.splitlines()[0] for alias in aliases)]
+            if len(matches) != 1:
+                errors.append(f"{header}: falta escenario obligatorio único '{key}'.")
+                continue
+            body = matches[0]
+            if not re.search(r"\b(?:dado|dada|dados|dadas|given)\b.+?\b(?:cuando|when)\b.+?\b(?:entonces|then)\b.+", body, re.S):
+                errors.append(f"{header}/{key}: requiere Dado, Cuando y Entonces en orden y con contenido.")
+            if re.search(r"\[[^\]]+\]", body):
+                errors.append(f"{header}/{key}: reemplazar los campos de ejemplo entre corchetes.")
 
     return len(errors) == 0, errors
 
 
+def prd_digest(root):
+    return hashlib.sha256((root / "PRD.md").read_bytes()).hexdigest()
+
+
+def approval_path(root, digest):
+    return root / ".agyflow" / "approvals" / f"prd-{digest}.json"
+
+
+def valid_approval(root):
+    digest = prd_digest(root)
+    path = approval_path(root, digest)
+    if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()):
+        return False
+    try:
+        data = load_evidence(path.read_text(encoding="utf-8"))
+        date = datetime.fromisoformat(data.get("recorded_at", ""))
+        return (data.get("document") == "PRD.md" and data.get("sha256") == digest
+                and data.get("status") == "approved" and date.tzinfo is not None
+                and all(specified(data.get(k)) for k in ("person", "scope", "evidence")))
+    except (OSError, UnicodeError, ValueError, TypeError):
+        return False
+
+
+def record_prd_approval(root, person, scope, evidence):
+    root = root.resolve()
+    if not all(specified(v) for v in (person, scope, evidence)):
+        raise ValueError("La aprobación requiere persona, alcance y evidencia explícitos.")
+    ok, errors = check_prd_gherkin(root / "PRD.md")
+    if not ok:
+        raise ValueError("PRD incompleto: " + "; ".join(errors))
+    digest = prd_digest(root)
+    path = approval_path(root, digest)
+    for parent in [path, *path.parents]:
+        if parent == root:
+            break
+        if parent.is_symlink():
+            raise ValueError("La ruta de aprobación no admite enlaces simbólicos.")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    record = dict(schema_version=1, document="PRD.md", sha256=digest, status="approved",
+                  person=person, scope=scope, evidence=evidence,
+                  recorded_at=datetime.now(timezone.utc).isoformat())
+    # Exclusive create: an approval for the same content cannot silently replace history.
+    with path.open("x", encoding="utf-8") as handle:
+        json.dump(record, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+    return path
+
+
 def detect_phase(root: Path) -> tuple[str, str, str]:
-    """Detect current phase, details, and next recommended agent."""
-    prd_path = root / "PRD.md"
-    sprint_path = root / "sprint_actual.md"
-    contracts_path = root / "packages/contracts/src"
-    bug_path = root / "bug_report.md"
-
-    # 1. PRD Phase
-    if not prd_path.exists():
-        return "1_PO", "Falta PRD.md.", "po-agent"
-
-    prd_content = prd_path.read_text(encoding="utf-8")
-    if "Aprobación humana (persona, fecha, alcance y evidencia): pendiente" in prd_content:
-        ok_gh, gherkin_errs = check_prd_gherkin(prd_path)
-        if not ok_gh:
-            return "1_PO_REFINING", f"El PRD requiere completar los 4 escenarios Gherkin ({len(gherkin_errs)} pendientes).", "po-agent"
-        return "1_PO_GATE", "PRD completo con 4 Gherkins listos. Requiere aprobación humana.", "HUMANO (Firma de aprobación)"
-
-    # 2. Planning Phase
-    if not sprint_path.exists():
-        return "2_SCRUM", "PRD aprobado pero falta sprint_actual.md.", "scrum-master-agent"
-
-    sprint_content = sprint_path.read_text(encoding="utf-8")
-    if "Estado: sin inicializar" in sprint_content:
-        return "2_SCRUM", "Sprint no inicializado en Plane.", "scrum-master-agent"
-
-    # 3. Parallel Contracts & Design
-    has_contracts = contracts_path.exists() and any(contracts_path.glob("**/*.ts"))
-    if not has_contracts:
-        return "3_CONTRACTS", "Faltan contratos compartidos en packages/contracts/src.", "backend-dev-agent"
-
-    # 4. QA or Bugs
-    if bug_path.exists():
-        bug_content = bug_path.read_text(encoding="utf-8")
-        if "Resultado: aprobado" in bug_content:
-            return "5_DEVOPS_STAGING", "QA aprobado para la revisión candidata. Listo para Staging.", "devops-agent"
-        elif "Resultado: rechazado" in bug_content:
-            return "4_CORRECTION", "QA rechazado. Se requiere corregir el código según bug_report.md.", "frontend-dev-agent / backend-dev-agent"
-
-    return "4_IMPLEMENTATION_QA", "Fase de implementación o auditoría QA.", "qa-agent"
+    root = root.resolve()
+    try:
+        if not (root / "PRD.md").exists():
+            return "1_PO", "Falta PRD.md.", "po-agent"
+        ok, errors = check_prd_gherkin(root / "PRD.md")
+        if not ok:
+            return "1_PO_REFINING", "; ".join(errors), "po-agent"
+        if not valid_approval(root):
+            return "1_PO_GATE", "Falta registro de aprobación para el contenido exacto del PRD.", "HUMANO"
+        arch = root / "architecture.md"
+        if not arch.is_file() or not arch.read_text(encoding="utf-8").strip():
+            return "2_ARCHITECTURE_GATE", "El humano debe aportar architecture.md; el borrador no lo sustituye.", "HUMANO"
+        entry = root / "handoff.json"
+        if not entry.exists():
+            return "2_SCRUM", "Preparar planificación y entrega explícita; no se ha comprobado Plane.", "scrum-master-agent"
+        raw = entry.read_text(encoding="utf-8")
+        data = load_evidence(raw)
+        role = data.get("target_role")
+        if not isinstance(role, str) or role not in AGENTS:
+            return "BLOCKED", "Destinatario desconocido en handoff.json.", "HUMANO"
+        candidate = {}
+        if role in {"qa-agent", "devops-agent"} and data.get("phase", "delivery") == "delivery":
+            candidate = load_evidence((root / "candidate.json").read_text(encoding="utf-8"))
+        ok, errors = check_preconditions(role, raw, revision=candidate.get("revision"),
+                                        qa_run=candidate.get("qa_run"), ticket=candidate.get("ticket"))
+        if ok and role == "scrum-master-agent" and data["inputs"]["prd_approval"].get("revision") != prd_digest(root):
+            errors.append("La entrega de planificación no referencia el hash del PRD aprobado.")
+            ok = False
+        if not ok:
+            return "BLOCKED", "; ".join(errors), role
+        if data.get("phase") == "preparation":
+            return "3_PREPARATION", "Entradas declaradas consistentes para preparar pruebas/build; sin despliegue.", role
+        phases = {"po-agent": "1_PO", "scrum-master-agent": "2_SCRUM", "designer-agent": "3_DESIGN",
+                  "backend-dev-agent": "3_BACKEND", "frontend-dev-agent": "4_IMPLEMENTATION",
+                  "qa-agent": "4_QA", "devops-agent": "5_STAGING_REVIEW", "automation-agent": "STATE_RECONCILIATION"}
+        return phases[role], "Entrega declarada consistente. Verificar fuentes, asignación y activación humana antes de actuar.", role
+    except (OSError, UnicodeError, ValueError, TypeError) as exc:
+        return "BLOCKED", f"No se pudo verificar la evidencia: {exc}", "HUMANO"
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, default=Path.cwd(), help="Raíz del proyecto")
+    parser.add_argument("--root", type=Path, default=Path.cwd())
     subparsers = parser.add_subparsers(dest="command")
-
-    subparsers.add_parser("status", help="Mostrar fase actual y diagnósticos")
-    subparsers.add_parser("check-prd", help="Validar la regla de los 4 escenarios Gherkin en PRD.md")
-    subparsers.add_parser("advance", help="Avanzar interactivamente a la siguiente fase")
-
+    subparsers.add_parser("status", help="Diagnóstico local; no confirma estado remoto")
+    subparsers.add_parser("check-prd", help="Comprobar estructura de escenarios; no valida su significado")
+    subparsers.add_parser("advance", help="Proponer siguiente acción; no registra aprobaciones ni invoca agentes")
+    approve = subparsers.add_parser("approve-prd", help="Registrar una aprobación humana ya otorgada, vinculada al SHA-256 del PRD")
+    for name in ("person", "scope", "evidence"):
+        approve.add_argument("--" + name, required=True)
     args = parser.parse_args()
-    if not args.command:
-        args.command = "status"
     root = args.root.resolve()
-
-    if args.command == "status":
-        phase, detail, next_actor = detect_phase(root)
-        print("=== ESTADO DEL PIPELINE agyFlow ===")
-        print(f"Directorio: {root}")
-        print(f"Fase detectada: {phase}")
-        print(f"Detalle: {detail}")
-        print(f"Siguiente actor: {next_actor}")
-
-        prd_file = root / "PRD.md"
-        if prd_file.exists():
-            ok_gh, gh_errs = check_prd_gherkin(prd_file)
-            print("\n=== AUDITORÍA GHERKIN EN PRD.md ===")
-            if ok_gh:
-                print("✅ Todas las historias cumplen la Regla de los 4 Escenarios Gherkin.")
-            else:
-                print(f"⚠️ Se encontraron {len(gh_errs)} observaciones:")
-                for err in gh_errs[:5]:
-                    print(f"   - {err}")
-                if len(gh_errs) > 5:
-                    print(f"   ... y {len(gh_errs) - 5} más.")
-
-    elif args.command == "check-prd":
-        prd_file = root / "PRD.md"
-        ok_gh, gh_errs = check_prd_gherkin(prd_file)
-        if ok_gh:
-            print("OK: PRD.md cumple 100% con la Regla de los 4 Escenarios Gherkin obligatorios.")
+    try:
+        if args.command == "approve-prd":
+            path = record_prd_approval(root, args.person, args.scope, args.evidence)
+            print(f"Registro de aprobación escrito en {path}. No activa la siguiente fase.")
             return 0
-        else:
-            print(f"FALLO: El PRD no cumple con la regla de Gherkin ({len(gh_errs)} problemas):", file=sys.stderr)
-            for e in gh_errs:
-                print(f"  - {e}", file=sys.stderr)
-            return 1
-
-    elif args.command == "advance":
-        phase, detail, next_actor = detect_phase(root)
-        print(f"\n[Fase Actual]: {phase}")
-        print(f"[Diagnóstico]: {detail}")
-        print(f"[Siguiente Acción]: Invocar a [{next_actor}]")
-
-        if "GATE" in phase or "HUMANO" in next_actor:
-            confirm = input("\n¿Aprobás esta fase para avanzar? [S/N]: ").strip().lower()
-            if confirm in ["s", "si", "y", "yes"]:
-                print("✅ Aprobación humana registrada. Procede a ejecutar la siguiente fase.")
-            else:
-                print("⏸️ Detenido. La fase permanece pendiente de aprobación humana.")
-        else:
-            print(f"\nComando sugerido: agy --agent {next_actor}")
-
-    return 0
+        if args.command == "check-prd":
+            ok, errors = check_prd_gherkin(root / "PRD.md")
+            print("Estructura de escenarios válida; requiere revisión de contenido." if ok else "\n".join(errors))
+            return 0 if ok else 1
+        phase, detail, actor = detect_phase(root)
+        print(f"Fase: {phase}\nDetalle: {detail}\nSiguiente actor propuesto: {actor}")
+        if args.command == "advance":
+            print("No se registró ninguna aprobación ni se ejecutó una fase.")
+            if phase.endswith("GATE"):
+                print("Aportar la evidencia humana requerida. Para PRD: approve-prd --person ... --scope ... --evidence ...")
+        return 1 if phase == "BLOCKED" else 0
+    except (OSError, UnicodeError, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

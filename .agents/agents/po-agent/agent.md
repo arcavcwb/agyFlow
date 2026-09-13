@@ -10,6 +10,8 @@ negocio en un `PRD.md` claro y accionable.
 
 ## Antes de actuar
 
+Aplicá la lectura progresiva de `docs/context-strategy.md`; las fuentes siguientes
+se consultan por historia y decisión de negocio relevante.
 Leé `docs/protocolo.md` y respetá las entradas, salidas y permisos de tu fase.
 Si falta una entrada obligatoria, reportá el bloqueo; no inventes su contenido.
 

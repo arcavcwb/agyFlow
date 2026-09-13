@@ -13,10 +13,10 @@ modelo. No hace falta ejecutar los ocho roles simultáneamente.
 
 1. El humano asigna una tarea a una sesión y una revisión a la otra. Puede
    empezar Codex implementando y agy revisando, o al revés.
-2. Ambas leen `AGENTS.md` y esta guía. En trabajo de producto leen además
-   `docs/protocolo.md` y el archivo del rol asignado en
-   `.agents/agents/<rol>/agent.md` y la skill propia indicada en él, además de
-   las entradas necesarias de la tarea. Los complementos se consultan en
+2. Ambas comienzan por `AGENTS.md`, el archivo del rol asignado en
+   `.agents/agents/<rol>/agent.md`, su skill propia y el encargo. Aplican
+   `docs/context-strategy.md` para abrir después las secciones relevantes de
+   esta guía, `docs/protocolo.md` y las entradas de la tarea. Los complementos se consultan en
    `config/skills.json` y se cargan según `docs/skills.md`.
    Si el rol no aparece en el selector del cliente, se puede pedir su lectura
    explícita como guía; eso no registra un subagente nativo ni instala sus MCP.
@@ -35,10 +35,17 @@ sincronizado ni se crean IDs remotos ficticios.
 
 ## Contexto compartido
 
-Las sesiones deben releer los archivos relevantes después de cada entrega. No
+Las sesiones deben releer los archivos modificados o las referencias cuya
+revisión cambió después de cada entrega; no necesitan recargar fuentes estables
+sin una razón concreta. No
 se presupone acceso a la conversación, herramientas, credenciales o decisiones
 no guardadas de la otra sesión. La coordinación inicial usa archivos y el
 traspaso explícito del humano; esta guía no configura un puente entre clientes.
+
+El traspaso comparte ticket, revisión, rutas, diff, comandos/resultados y
+bloqueos. No comparte la conversación completa ni duplica el contenido de PRD,
+contratos o reportes. Los diagramas visuales quedan fuera del contexto automático
+según `docs/context-strategy.md`.
 
 Codex descubre instrucciones de proyecto mediante `AGENTS.md`. Para una sesión
 ya abierta, pedile expresamente que relea los archivos actualizados; la carga
@@ -69,7 +76,7 @@ qué instrucciones y herramientas cargó agy. [Documentación de OpenAI](https:/
 
 ```text
 Estamos trabajando con Codex y agy en este mismo proyecto.
-Leé AGENTS.md, docs/protocolo.md y docs/agy-codex.md.
+Leé AGENTS.md y aplicá docs/context-strategy.md.
 Tu tarea actual es revisar la plantilla en modo de solo lectura.
 Revisá README.md y las definiciones de .agents/agents/ y contrastá sus
 instrucciones con la ayuda disponible de tu CLI.
@@ -83,7 +90,9 @@ Entregá los hallazgos en tu respuesta para compartirlos con Codex.
 Completar los campos antes de enviarlo a cualquiera de las dos sesiones:
 
 ```text
-Leé AGENTS.md, docs/protocolo.md, docs/agy-codex.md y el archivo del rol [ROL].
+Leé AGENTS.md, el archivo del rol [ROL] y su skill principal.
+Aplicá docs/context-strategy.md y consultá las secciones relevantes del protocolo,
+stack y guía agy-Codex según las dependencias del ticket.
 Implementá el ticket [ID Y ENLACE] en el alcance [RUTAS ASIGNADAS].
 Tu etiqueta de sesión es [SESIÓN]. La otra sesión tiene asignado [OTRO ALCANCE].
 Verificá las entradas de la fase y los contratos existentes antes de editar.

@@ -1,0 +1,14 @@
+# Archivos internos de la plantilla agyFlow.
+# degit los excluye al scaffoldear un proyecto receptor.
+
+# Tests que validan la plantilla en sí; el proyecto receptor escribe los suyos.
+tests/
+
+# Script de generación de diagramas internos de agyFlow.
+scripts/generate_diagram_canvas.py
+
+# Script de inicialización de receptores; no tiene sentido dentro de un receptor.
+scripts/setup_receiver.py
+
+# Configuración de pre-commit propia de agyFlow; el receptor define la suya.
+.pre-commit-config.yaml

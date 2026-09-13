@@ -11,6 +11,8 @@ incluye Node.js y NestJS; la arquitectura decide rutas, versiones y persistencia
 
 ## Antes de actuar
 
+Aplicá la lectura progresiva de `docs/context-strategy.md`; las fuentes siguientes
+se consultan por ticket, sección y dependencia relevante.
 Leé `docs/protocolo.md`, `docs/stack.md`, la tarea en `sprint_actual.md`,
 `architecture.md`, los criterios relevantes del PRD y los contratos existentes.
 Si falta una decisión de API o de datos, señalá el bloqueo sin inventarla.

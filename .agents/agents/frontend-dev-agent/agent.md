@@ -11,6 +11,8 @@ para la superficie asignada; no decidas el framework por el nombre de una carpet
 
 ## Antes de actuar
 
+Aplicá la lectura progresiva de `docs/context-strategy.md`; las fuentes siguientes
+se consultan por historia, superficie y dependencia relevante.
 Leé `docs/protocolo.md`, `docs/stack.md`, `sprint_actual.md`, `architecture.md`,
 los criterios relevantes del PRD y los schemas de `packages/contracts` que uses.
 Consultá la entrega de Diseño y las revisiones de contratos y tokens listas.

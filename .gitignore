@@ -3,6 +3,10 @@
 .env.*
 !.env.example
 __pycache__/
+.agyflow-backups/
 *.py[cod]
 *$py.class
 .DS_Store
+pr_diff.txt
+review_report.md
+review_result.json

@@ -59,6 +59,7 @@ def validate_skills(root, read, errors):
     if set(assignments) != AGENTS:
         errors.append(f"{relative}: asignaciones incompletas o agentes desconocidos")
     used_core = set()
+    used_optional_bundled = set()
     for name, assignment in assignments.items():
         if not isinstance(assignment, dict):
             errors.append(f"{relative}: asignación inválida: {name}")
@@ -77,9 +78,12 @@ def validate_skills(root, read, errors):
         optional = assignment.get("optional")
         if not isinstance(optional, list) or not all(isinstance(k, str) for k in optional):
             errors.append(f"{relative}: optional inválido: {name}")
-        elif len(set(optional)) != len(optional) or any(k not in external for k in optional):
+        elif len(set(optional)) != len(optional) or any(k not in external and k not in bundled for k in optional):
             errors.append(f"{relative}: optional duplicado o desconocido: {name}")
-    if set(bundled) != used_core:
+        else:
+            used_optional_bundled.update(k for k in optional if k in bundled)
+    all_assigned_bundled = used_core | used_optional_bundled
+    if set(bundled) != all_assigned_bundled:
         errors.append(f"{relative}: skills incluidas sin asignación válida")
     for skill, entry in bundled.items():
         if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", skill) or len(skill) > 64:
@@ -122,6 +126,147 @@ def validate_skills(root, read, errors):
             valid = False
         if not valid:
             errors.append(f"{relative}: estado o revisión externa inválidos: {skill}")
+
+
+def validate_ai_pr_reviewer(root, read, errors):
+    """Validate AI PR Reviewer module if present; skip silently if absent."""
+    reviewer_dir = root / "tools" / "ai-pr-reviewer"
+    workflow_path = root / ".github" / "workflows" / "ai-pr-review.yml"
+    docs_path = root / "docs" / "ai-pr-reviewer.md"
+    if not any(path.exists() for path in
+               (reviewer_dir, workflow_path, docs_path)):
+        return  # Optional module not installed
+
+    # 1. Required files
+    required_files = [
+        "README.md", "prompt.md", "policy.md",
+        "review_agent.py", "requirements.txt",
+    ]
+    module_files = {}
+    for name in required_files:
+        relative = f"tools/ai-pr-reviewer/{name}"
+        module_files[name] = read(relative)
+
+    # 2. Policy completeness
+    policy = read("tools/ai-pr-reviewer/policy.md")
+    if policy:
+        for section in ("Acceso permitido", "Acceso prohibido",
+                        "Gestión de la API key"):
+            if section not in policy:
+                errors.append(
+                    f"tools/ai-pr-reviewer/policy.md: "
+                    f"falta sección '{section}'"
+                )
+
+    # 3. No hardcoded API keys
+    key_pattern = re.compile(r"AIza[A-Za-z0-9_-]{30,}")
+    for check_file in (
+        "tools/ai-pr-reviewer/review_agent.py",
+        "tools/ai-pr-reviewer/prompt.md",
+        "tools/ai-pr-reviewer/policy.md",
+        ".github/workflows/ai-pr-review.yml",
+        "docs/ai-pr-reviewer.md",
+    ):
+        content = read(check_file)
+        if content and key_pattern.search(content):
+            errors.append(f"{check_file}: posible API key hardcodeada")
+
+    # 4. Workflow uses secrets reference
+    workflow = read(".github/workflows/ai-pr-review.yml")
+    if workflow:
+        if "secrets.GEMINI_API_KEY" not in workflow:
+            errors.append(
+                ".github/workflows/ai-pr-review.yml: "
+                "debe usar secrets.GEMINI_API_KEY"
+            )
+        if "contents: read" not in workflow:
+            errors.append(
+                ".github/workflows/ai-pr-review.yml: "
+                "debe declarar permissions contents: read"
+            )
+        if "steps.review.outputs.exit_code != '0'" not in workflow:
+            errors.append(
+                ".github/workflows/ai-pr-review.yml: "
+                "debe fallar si el reviewer no completa la revisión"
+            )
+
+    reviewer = module_files.get("review_agent.py", "")
+    if reviewer:
+        if "response_json_schema" not in reviewer:
+            errors.append(
+                "tools/ai-pr-reviewer/review_agent.py: "
+                "falta esquema de respuesta estructurada"
+            )
+        if "gemini-2.0" in reviewer:
+            errors.append(
+                "tools/ai-pr-reviewer/review_agent.py: usa un modelo retirado"
+            )
+        if r"\.excalidraw" not in reviewer:
+            errors.append(
+                "tools/ai-pr-reviewer/review_agent.py: "
+                "debe excluir diagramas editables del contexto"
+            )
+        if "return 3" not in reviewer:
+            errors.append(
+                "tools/ai-pr-reviewer/review_agent.py: "
+                "debe identificar revisiones parciales"
+            )
+    if workflow and "steps.review.outputs.exit_code == '3'" not in workflow:
+        errors.append(
+            ".github/workflows/ai-pr-review.yml: "
+            "debe impedir un gate verde con revisión parcial"
+        )
+
+    # 5. Documentation exists
+    read("docs/ai-pr-reviewer.md")
+
+
+def validate_context_strategy(root, index, read, errors):
+    """Validate the progressive context policy and diagram boundaries."""
+    strategy = read("docs/context-strategy.md")
+    readme = read("README.md")
+    diagrams = read("docs/diagrams/README.md")
+
+    for relative, content in (
+        ("AGENTS.md", index),
+        ("README.md", readme),
+        ("docs/diagrams/README.md", diagrams),
+    ):
+        if content and "docs/context-strategy.md" not in content:
+            errors.append(f"{relative}: falta referencia a la estrategia de contexto")
+
+    if strategy:
+        for concept in ("lectura progresiva", "Paquetes mínimos por rol",
+                        "Handoffs compactos", "AI PR Reviewer"):
+            if concept.casefold() not in strategy.casefold():
+                errors.append(
+                    f"docs/context-strategy.md: falta sección o concepto '{concept}'"
+                )
+
+    if diagrams:
+        for concept in ("material humano", "no son fuente de verdad"):
+            if concept.casefold() not in diagrams.casefold():
+                errors.append(
+                    "docs/diagrams/README.md: no declara los diagramas "
+                    f"como {concept}"
+                )
+
+    forbidden = re.compile(
+        r"docs/diagrams/[^\s`]*\.(?:excalidraw|svg|png)", re.I
+    )
+    for base in (root / ".agents/agents", root / ".agents/skills"):
+        for path in base.rglob("*.md"):
+            relative = str(path.relative_to(root))
+            content = read(relative)
+            if (base.name == "agents" and path.name == "agent.md" and
+                    "docs/context-strategy.md" not in content):
+                errors.append(
+                    f"{relative}: falta aplicar la estrategia de contexto"
+                )
+            if content and forbidden.search(content):
+                errors.append(
+                    f"{relative}: requiere un diagrama binario como contexto operativo"
+                )
 
 
 def validate(root: Path, project: bool) -> list[str]:
@@ -176,6 +321,8 @@ def validate(root: Path, project: bool) -> list[str]:
             errors.append(f"AGENTS.md: falta {name}")
 
     validate_skills(root, read, errors)
+    validate_context_strategy(root, index, read, errors)
+    validate_ai_pr_reviewer(root, read, errors)
 
     relative = ".agents/mcp_config.example.json"
     raw = read(relative)
